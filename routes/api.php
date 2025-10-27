@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\TestimonialController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\BlogSectionController;
+use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -21,6 +22,7 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::apiResource('testimonials', TestimonialController::class);
         Route::apiResource('blogs', BlogController::class);
+        Route::apiResource('products', ProductController::class);
         // Route::delete('blogs/{blog}/sections/{section}', [BlogSectionController::class, 'destroy']);
         // Route::delete('blogs/{blog}/sections/{section}/attachment', [BlogSectionController::class, 'deleteAttachment']);
     });
