@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\BaseController;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterUserRequest;
+use App\Http\Resources\UserResource;
 use App\Mail\SystemNotificationMail;
 use App\Models\User;
 use Illuminate\Http\Request;

@@ -9,8 +9,8 @@ class Testimonial extends Model
     protected $fillable = [
         'client_name',
         'role',
+        'profile_image',
         'message',
-        'media_type',
         'media_url',
         'thumbnail_url',
         'status'
@@ -25,5 +25,4 @@ class Testimonial extends Model
     {
         return $query->where('status', 1);
     }
-
 }

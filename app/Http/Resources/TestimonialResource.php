@@ -12,11 +12,11 @@ class TestimonialResource extends JsonResource
         return [
             // 'id'=>$this->id,
             'client_name' => $this->client_name ?? 'Anonymous',
-            'profile_image' => $this->client?->profile_image
-                ? asset('storage/' . $this->client->profile_image)
+            'role' => $this->role,
+            'profile_image' => $this->profile_image
+                ? asset('storage/' . $this->profile_image)
                 : null,
             'message' => $this->message,
-            'media_type' => $this->media_type,
             'media_url' => $this->media_url
                 ? asset('storage/' . $this->media_url)
                 : null,

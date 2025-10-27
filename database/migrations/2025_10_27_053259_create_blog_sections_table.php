@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('clients', function (Blueprint $table) {
+        Schema::create('blog_sections', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('logo')->nullable();
-            $table->string('website')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->foreignId('blog_id')->constrained()->cascadeOnDelete();
+            $table->string('heading')->nullable();
+            $table->longText('content')->nullable();
+            $table->string('attachment')->nullable();
             $table->timestamps();
         });
     }
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('clients');
+        Schema::dropIfExists('blog_sections');
     }
 };

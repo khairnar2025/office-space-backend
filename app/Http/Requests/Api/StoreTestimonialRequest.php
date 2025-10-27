@@ -16,8 +16,9 @@ class StoreTestimonialRequest extends FormRequest
         return [
             'client_name' => 'required|string',
             'role' => 'required|string',
+            'profile_image' => 'nullable|file|mimes:jpg,jpeg,png,webp,mov|max:10240',
             'message' => 'required|string|min:10',
-            'media_file' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov|max:10240', // 10MB max
+            'media_file' => 'nullable|file|mimes:mp4,mov|max:10240',
             'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
         ];
     }

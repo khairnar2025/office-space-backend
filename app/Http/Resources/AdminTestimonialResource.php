@@ -13,14 +13,17 @@ class AdminTestimonialResource extends JsonResource
             'id'             => $this->id,
             'client_name' => $this->client_name,
             'role' => $this->role,
+            'profile_image' => $this->profile_image
+                ? asset('storage/' . $this->profile_image)
+                : null,
             'message'        => $this->message,
-            'media_type'     => $this->media_type,
             'media_url' => $this->media_url
                 ? asset('storage/' . $this->media_url)
                 : null,
             'thumbnail_url' => $this->thumbnail_url
                 ? asset('storage/' . $this->thumbnail_url)
                 : null,
+            'status'        => $this->status ? 1 : 0,
             'created_at'     => $this->created_at,
             'updated_at'     => $this->updated_at,
         ];

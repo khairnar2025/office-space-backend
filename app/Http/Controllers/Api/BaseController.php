@@ -42,4 +42,12 @@ class BaseController extends Controller
 
         return response()->json($response, $code);
     }
+    public function sendSimpleResponse($id, $status, $message)
+    {
+        return response()->json([
+            'success' => true,
+            'id' => $id,
+            'message' => $message,
+        ], 200);
+    }
 }

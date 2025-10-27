@@ -16,10 +16,15 @@ class UpdateTestimonialRequest extends FormRequest
         return [
             'client_name' => 'sometimes|required|string',
             'role' => 'sometimes|required|string',
+            'profile_image' => 'nullable|file|mimes:jpg,jpeg,png,webp,mov|max:10240',
             'message' => 'sometimes|required|string|min:10',
-            'media_file' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov|max:10240', // 10MB max
+            'media_file' => 'nullable|file|mimes:mp4,mov|max:10240',
             'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
             'status' => 'boolean',
+            'remove_profile_image' => 'nullable|boolean',
+            'remove_media_file'    => 'nullable|boolean',
+            'remove_thumbnail'     => 'nullable|boolean',
+
         ];
     }
 
