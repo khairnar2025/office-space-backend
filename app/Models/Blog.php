@@ -21,4 +21,8 @@ class Blog extends Model
     {
         return $this->image ? asset('storage/' . $this->image) : null;
     }
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
+    }
 }

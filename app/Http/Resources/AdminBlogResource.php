@@ -4,7 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class BlogResource extends JsonResource
+class AdminBlogResource extends JsonResource
 {
     public function toArray($request): array
     {
@@ -13,7 +13,7 @@ class BlogResource extends JsonResource
             'title' => $this->title,
             'message' => $this->message,
             'image' => $this->image_url,
-            // 'status' => $this->status ? 1 : 0,
+            'status' => $this->status ? 1 : 0,
             'sections' => BlogSectionResource::collection($this->whenLoaded('sections')),
             'created_at' => $this->created_at,
         ];

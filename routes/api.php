@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\Admin\TestimonialController;
+use App\Http\Controllers\Api\TestimonialController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\BlogSectionController;
@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('register', [AuthController::class, 'register']);
 Route::get('testimonials', [TestimonialController::class, 'publicIndex']);
+Route::get('blogs', [BlogController::class, 'publicIndex']);
+Route::get('blogs/{id}', [BlogController::class, 'publicShow']);
 Route::middleware('check.status')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 });

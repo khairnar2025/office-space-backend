@@ -8,15 +8,25 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\Api\StoreBlogRequest;
 use App\Http\Requests\Api\UpdateBlogRequest;
 use App\Http\Resources\BlogResource;
+use App\Http\Resources\AdminBlogResource;
+use Illuminate\Http\JsonResponse;
 
 class BlogController extends BaseController
 {
     public function index()
     {
         $blogs = Blog::with('sections')->latest()->get();
-        return $this->sendResponse(BlogResource::collection($blogs), 'Blogs retrieved successfully.');
+        return $this->sendResponse(AdminBlogResource::collection($blogs), 'Blogs retrieved successfully.');
     }
-
+    // Public: limited info
+    public function publicIndex(): JsonResponse
+    {
+        $blogs = Blog::with('sections')->active()->latest()->get();
+        return $this->sendResponse(
+            BlogResource::collection($blogs),
+            'Blogs retrieved successfully.'
+        );
+    }
     public function store(StoreBlogRequest $request)
     {
         $data = $request->validated();
@@ -44,13 +54,18 @@ class BlogController extends BaseController
         return $this->sendResponse(new BlogResource($blog->load('sections')), 'Blog created successfully.');
     }
 
+    public function publicShow($id)
+    {
+        $blog = Blog::with('sections')->find($id);
+        if (!$blog) return $this->sendError('Blog not found.', 404);
+        return $this->sendResponse(new BlogResource($blog), 'Blog retrieved successfully.');
+    }
     public function show($id)
     {
         $blog = Blog::with('sections')->find($id);
         if (!$blog) return $this->sendError('Blog not found.', 404);
         return $this->sendResponse(new BlogResource($blog), 'Blog retrieved successfully.');
     }
-
     public function update(UpdateBlogRequest $request, $id)
     {
         $blog = Blog::find($id);
