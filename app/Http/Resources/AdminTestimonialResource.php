@@ -11,7 +11,8 @@ class AdminTestimonialResource extends JsonResource
     {
         return [
             'id'             => $this->id,
-            'client_user_id' => $this->client_user_id,
+            'client_name' => $this->client_name,
+            'role' => $this->role,
             'message'        => $this->message,
             'media_type'     => $this->media_type,
             'media_url' => $this->media_url
@@ -22,12 +23,6 @@ class AdminTestimonialResource extends JsonResource
                 : null,
             'created_at'     => $this->created_at,
             'updated_at'     => $this->updated_at,
-            'client'         => [
-                'id'    => $this->client->id,
-                'name'  => $this->client->name,
-                'email' => $this->client->email,
-                'status' => $this->client->status,
-            ],
         ];
     }
 }

@@ -10,21 +10,35 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Check if admin already exists
-        if (!User::where('email', 'ammrstesting@gmail.com')->exists()) {
-            User::create([
-                'name' => 'Super Admin',
+        $admins = [
+            [
+                'name'  => 'Super Admin',
                 'email' => 'ammrstesting@gmail.com',
-                'password' => Hash::make('ammrstesting@1'),
-                'role' => 'admin',
-                'status' => true,
-                'billing_address' => json_encode([]),
-                'shipping_address' => json_encode([]),
-            ]);
+                'password' => 'ammrstesting@1',
+            ],
+            [
+                'name'  => 'Sachin Admin',
+                'email' => 'sachin.khairnar@ammrs.co.in',
+                'password' => 'sachin@123',
+            ],
+        ];
 
-            $this->command->info('✅ Admin user created: ammrstesting@gmail.com / ammrstesting@1');
-        } else {
-            $this->command->info('⚠️ Admin user already exists, skipping creation.');
+        foreach ($admins as $admin) {
+            if (!User::where('email', $admin['email'])->exists()) {
+                User::create([
+                    'name' => $admin['name'],
+                    'email' => $admin['email'],
+                    'password' => Hash::make($admin['password']),
+                    'role' => 'admin',
+                    'status' => true,
+                    'billing_address' => json_encode([]),
+                    'shipping_address' => json_encode([]),
+                ]);
+
+                $this->command->info("✅ Admin user created: {$admin['email']} / {$admin['password']}");
+            } else {
+                $this->command->info("⚠️ Admin user already exists: {$admin['email']}, skipping creation.");
+            }
         }
     }
 }

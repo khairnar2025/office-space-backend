@@ -13,12 +13,8 @@ return new class extends Migration
     {
         Schema::create('testimonials', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_user_id');
-            $table->foreign('client_user_id')
-                ->references('id')
-                ->on('users')
-                ->onDelete('cascade');
-
+            $table->string('client_name')->nullable();
+            $table->string('role')->nullable();
             $table->text('message');
             $table->enum('media_type', ['image', 'video'])->nullable();
             $table->string('media_url')->nullable();

@@ -116,4 +116,14 @@ class AuthController extends BaseController
             'message' => 'Logged out successfully',
         ]);
     }
+    public function user(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'success' => true,
+            'data'    => new UserResource($user),
+            'message' => 'User retrieved successfully',
+        ]);
+    }
 }

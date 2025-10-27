@@ -14,7 +14,8 @@ class StoreTestimonialRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'client_user_id' => 'required|exists:users,id',
+            'client_name' => 'required|string',
+            'role' => 'required|string',
             'message' => 'required|string|min:10',
             'media_file' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov|max:10240', // 10MB max
             'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
@@ -24,8 +25,8 @@ class StoreTestimonialRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'client_user_id.required' => 'Please provide the client user.',
-            'client_user_id.exists' => 'The selected client does not exist.',
+            'client_name.required' => 'Please provide the client name.',
+            'role.required' => 'Please provide the role.',
             'message.required' => 'The testimonial message is required.',
             'message.min' => 'Your message must be at least 10 characters long.',
             'media_file.mimes' => 'The media file must be an image (jpg, jpeg, png) or video (mp4, mov).',

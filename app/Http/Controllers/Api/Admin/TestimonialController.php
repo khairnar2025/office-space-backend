@@ -16,7 +16,7 @@ class TestimonialController extends BaseController
     // Admin: full management
     public function index(): JsonResponse
     {
-        $testimonials = Testimonial::with('client')->latest()->get();
+        $testimonials = Testimonial::latest()->get();
         return $this->sendResponse(
             AdminTestimonialResource::collection($testimonials),
             'Testimonials retrieved successfully.'
@@ -57,7 +57,7 @@ class TestimonialController extends BaseController
 
     public function show($id): JsonResponse
     {
-        $testimonial = Testimonial::with('client')->find($id);
+        $testimonial = Testimonial::find($id);
         if (!$testimonial) {
             return $this->sendError('Testimonial not found.', 404);
         }

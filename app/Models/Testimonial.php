@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Testimonial extends Model
 {
     protected $fillable = [
-        'client_user_id',
+        'client_name',
+        'role',
         'message',
         'media_type',
         'media_url',
@@ -24,8 +25,5 @@ class Testimonial extends Model
     {
         return $query->where('status', 1);
     }
-    public function client()
-    {
-        return $this->belongsTo(User::class, 'client_user_id');
-    }
+
 }

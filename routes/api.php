@@ -17,4 +17,7 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::apiResource('testimonials', TestimonialController::class);
     });
+    Route::get('user', [AuthController::class, 'user']);
+    Route::post('/update-profile', [AuthController::class, 'updateProfile'])
+        ->name('update-profile');
 });

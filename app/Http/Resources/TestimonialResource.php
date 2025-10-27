@@ -11,7 +11,7 @@ class TestimonialResource extends JsonResource
     {
         return [
             // 'id'=>$this->id,
-            'name' => $this->client?->name ?? 'Anonymous',
+            'client_name' => $this->client_name ?? 'Anonymous',
             'profile_image' => $this->client?->profile_image
                 ? asset('storage/' . $this->client->profile_image)
                 : null,
