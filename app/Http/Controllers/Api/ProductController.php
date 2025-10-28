@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BaseController;
 use App\Http\Requests\Api\StoreProductRequest;
 use App\Http\Requests\Api\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
+use App\Models\DeliveryPincode;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -14,10 +15,14 @@ class ProductController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $products = Product::with('colors')->latest()->get();
+        $products = Product::with(['colors', 'deliveryPincodes'])->latest()->get();
         return $this->sendResponse(ProductResource::collection($products), 'Products fetched successfully.');
     }
-
+    public function publicIndex(): JsonResponse
+    {
+        $products = Product::with(['colors', 'deliveryPincodes'])->latest()->get();
+        return $this->sendResponse(ProductResource::collection($products), 'Products fetched successfully.');
+    }
     public function store(StoreProductRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -36,13 +41,21 @@ class ProductController extends BaseController
         if (!empty($data['colors'])) {
             $product->colors()->sync($data['colors']);
         }
-
+        if (!empty($data['delivery_pincodes'])) {
+            $product->deliveryPincodes()->sync($data['delivery_pincodes']);
+        }
         return $this->sendSimpleResponse($product->id, true, 'Product created successfully.');
     }
 
     public function show(Product $product): JsonResponse
     {
-        $product->load('colors');
+        $product->load(['colors', 'deliveryPincodes']);
+        return $this->sendResponse(new ProductResource($product), 'Product details retrieved successfully.');
+    }
+    public function publicShow($id): JsonResponse
+    {
+        $product = Product::with(['colors', 'deliveryPincodes'])->find($id);
+        if (!$product) return $this->sendError('Product not found.', 404);
         return $this->sendResponse(new ProductResource($product), 'Product details retrieved successfully.');
     }
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
@@ -91,6 +104,14 @@ class ProductController extends BaseController
 
         if (!empty($data['colors'])) {
             $product->colors()->syncWithoutDetaching($data['colors']);
+        }
+
+        if ($request->filled('delete_pincodes')) {
+            $product->deliveryPincodes()->detach($request->delete_pincodes);
+        }
+
+        if ($request->filled('delivery_pincodes')) {
+            $product->deliveryPincodes()->syncWithoutDetaching($request->delivery_pincodes);
         }
 
         /** ---------------------------------
@@ -184,5 +205,34 @@ class ProductController extends BaseController
         $product->delete();
 
         return $this->sendSimpleResponse($product->id, true, 'Product deleted successfully.');
+    }
+    public function checkPincode(Product $product, string $pincode): JsonResponse
+    {
+        $pincodeRecord = DeliveryPincode::where('pincode', $pincode)->first();
+
+        if (!$pincodeRecord || !$pincodeRecord->is_serviceable) {
+            return response()->json([
+                'available' => 0,
+                'message' => 'Delivery not available to this pincode.'
+            ], 200);
+        }
+
+        // Optional: if product has specific pin restrictions
+        if ($product->deliveryPincodes()->exists() && !$product->deliveryPincodes()->where('pincode', $pincode)->exists()) {
+            return response()->json([
+                'available' => 0,
+                'message' => 'This product is not deliverable to this pincode.'
+            ], 200);
+        }
+
+        return response()->json([
+            'available' => 1,
+            'expected_delivery' => sprintf(
+                '%d–%d days',
+                $pincodeRecord->delivery_days_min,
+                $pincodeRecord->delivery_days_max
+            ),
+            'message' => 'Product can be delivered to this pincode.'
+        ]);
     }
 }

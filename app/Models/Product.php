@@ -56,4 +56,13 @@ class Product extends Model
             return null;
         }, $gallery)));
     }
+    public function deliveryPincodes()
+    {
+        return $this->belongsToMany(
+            DeliveryPincode::class,
+            'product_pincode', // pivot table name
+            'product_id',      // foreign key on pivot table for Product
+            'delivery_pincode_id' // foreign key on pivot table for DeliveryPincode
+        );
+    }
 }

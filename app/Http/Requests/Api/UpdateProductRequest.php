@@ -21,6 +21,8 @@ class UpdateProductRequest extends FormRequest
             'category_id' => 'nullable|exists:categories,id',
             'colors' => 'nullable|array',
             'colors.*' => 'integer|exists:colors,id',
+            'delivery_pincodes' => 'nullable|array',
+            'delivery_pincodes.*' => 'exists:delivery_pincodes,id',
 
             'in_stock' => 'boolean',
             'price' => 'sometimes|required|numeric|min:0',

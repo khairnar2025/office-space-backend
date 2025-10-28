@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\DeliveryPincodeController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -18,6 +19,11 @@ Route::get('blogs/{id}', [BlogController::class, 'publicShow']);
 Route::get('categories', [CategoryController::class, 'publicIndex']);
 Route::get('colors', [ColorController::class, 'publicIndex']);
 Route::get('clients', [ClientController::class, 'publicIndex']);
+Route::get('products/{product}/check-pincode/{pincode}', [ProductController::class, 'checkPincode']);
+Route::get('products/{id}', [ProductController::class, 'publicShow']);
+Route::get('products', [ProductController::class, 'publicIndex']);
+Route::get('delivery-pincodes', [DeliveryPincodeController::class, 'publicIndex']);
+
 Route::middleware('check.status')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 });
@@ -32,6 +38,8 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
         Route::apiResource('colors', ColorController::class);
         Route::apiResource('products', ProductController::class);
         Route::apiResource('clients', ClientController::class);
+        Route::apiResource('delivery-pincodes', DeliveryPincodeController::class);
+
         // Route::delete('blogs/{blog}/sections/{section}', [BlogSectionController::class, 'destroy']);
         // Route::delete('blogs/{blog}/sections/{section}/attachment', [BlogSectionController::class, 'deleteAttachment']);
     });
