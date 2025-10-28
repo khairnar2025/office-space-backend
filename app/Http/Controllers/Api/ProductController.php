@@ -45,35 +45,46 @@ class ProductController extends BaseController
         $product->load('colors');
         return $this->sendResponse(new ProductResource($product), 'Product details retrieved successfully.');
     }
-
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
         $data = $request->validated();
 
-        // Delete gallery images
-        // Delete gallery images
-        if ($request->filled('delete_gallery') && !empty($product->gallery)) {
-            $gallery = $product->gallery; // e.g. ['images/pic1.jpg', 'images/pic2.jpg']
+        /** ---------------------------------
+         *  Start with existing gallery images
+         * --------------------------------- */
+        $gallery = $product->gallery ?? [];
 
+        /** ---------------------------------
+         *  Delete selected gallery images
+         * --------------------------------- */
+        if ($request->filled('delete_gallery')) {
             foreach ((array) $request->delete_gallery as $index) {
-                // Ensure the index exists and is a string path
                 if (isset($gallery[$index]) && is_string($gallery[$index])) {
                     $path = $gallery[$index];
-
-                    // Check if file exists before deleting
                     if (Storage::disk('public')->exists($path)) {
                         Storage::disk('public')->delete($path);
                     }
-
                     unset($gallery[$index]);
                 }
             }
-
-            // Reindex the array so keys are consecutive (0,1,2,...)
-            $data['gallery'] = array_values($gallery);
+            $gallery = array_values($gallery); // reindex to avoid gaps
         }
 
+        /** ---------------------------------
+         *  Add new gallery images
+         * --------------------------------- */
+        if ($request->hasFile('gallery')) {
+            foreach ($request->file('gallery') as $img) {
+                $gallery[] = $img->store('products/gallery', 'public');
+            }
+        }
 
+        // Save updated gallery
+        $data['gallery'] = $gallery;
+
+        /** ---------------------------------
+         *  Handle colors (detach + add new)
+         * --------------------------------- */
         if ($request->filled('delete_colors')) {
             $product->colors()->detach($request->delete_colors);
         }
@@ -82,27 +93,74 @@ class ProductController extends BaseController
             $product->colors()->syncWithoutDetaching($data['colors']);
         }
 
-        // Update thumbnail
+        /** ---------------------------------
+         *  Update thumbnail
+         * --------------------------------- */
         if ($request->hasFile('thumbnail')) {
-            if ($product->thumbnail && Storage::disk('public')->exists($product->thumbnail))
+            if ($product->thumbnail && Storage::disk('public')->exists($product->thumbnail)) {
                 Storage::disk('public')->delete($product->thumbnail);
+            }
             $data['thumbnail'] = $request->file('thumbnail')->store('products/thumbnails', 'public');
         }
 
-        // Add new gallery images
-        if ($request->hasFile('gallery')) {
-            $gallery = $data['gallery'] ?? $product->gallery ?? [];
-            foreach ($request->file('gallery') as $img) $gallery[] = $img->store('products/gallery', 'public');
-            $data['gallery'] = $gallery;
-        }
-
+        /** ---------------------------------
+         *  Update product record
+         * --------------------------------- */
         $product->update($data);
 
-        // Attach new colors
-        if (!empty($data['colors'])) $product->colors()->syncWithoutDetaching($data['colors']);
+        /** ---------------------------------
+         *  Re-attach any new colors (safety)
+         * --------------------------------- */
+        if (!empty($data['colors'])) {
+            $product->colors()->syncWithoutDetaching($data['colors']);
+        }
 
         return $this->sendSimpleResponse($product->id, true, 'Product updated successfully.');
     }
+
+    // public function update(UpdateProductRequest $request, Product $product): JsonResponse
+    // {
+    //     $data = $request->validated();
+    //     if ($request->filled('delete_gallery') && !empty($product->gallery)) {
+    //         $gallery = $product->gallery;
+
+    //         foreach ((array) $request->delete_gallery as $index) {
+    //             if (isset($gallery[$index]) && is_string($gallery[$index])) {
+    //                 $path = $gallery[$index];
+    //                 if (Storage::disk('public')->exists($path)) {
+    //                     Storage::disk('public')->delete($path);
+    //                 }
+
+    //                 unset($gallery[$index]);
+    //             }
+    //         }
+    //         $data['gallery'] = array_values($gallery);
+    //     }
+
+
+    //     if ($request->filled('delete_colors')) {
+    //         $product->colors()->detach($request->delete_colors);
+    //     }
+
+    //     if (!empty($data['colors'])) {
+    //         $product->colors()->syncWithoutDetaching($data['colors']);
+    //     }
+    //     if ($request->hasFile('thumbnail')) {
+    //         if ($product->thumbnail && Storage::disk('public')->exists($product->thumbnail))
+    //             Storage::disk('public')->delete($product->thumbnail);
+    //         $data['thumbnail'] = $request->file('thumbnail')->store('products/thumbnails', 'public');
+    //     }
+    //     // Add new gallery images
+    //     if ($request->hasFile('gallery')) {
+    //         $gallery = $data['gallery'] ?? $product->gallery ?? [];
+    //         foreach ($request->file('gallery') as $img) $gallery[] = $img->store('products/gallery', 'public');
+    //         $data['gallery'] = $gallery;
+    //     }
+    //     $product->update($data);
+    //     // Attach new colors
+    //     if (!empty($data['colors'])) $product->colors()->syncWithoutDetaching($data['colors']);
+    //     return $this->sendSimpleResponse($product->id, true, 'Product updated successfully.');
+    // }
 
     public function destroy(Product $product): JsonResponse
     {
