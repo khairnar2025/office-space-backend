@@ -75,24 +75,30 @@ class BlogController extends BaseController
 
         $data = $request->validated();
 
-        // ✅ Update main blog image
+        //Update main blog image
         if ($request->hasFile('image')) {
             if ($blog->image && Storage::disk('public')->exists($blog->image)) {
                 Storage::disk('public')->delete($blog->image);
             }
             $data['image'] = $request->file('image')->store('blogs', 'public');
         }
-
+        // Delete existing blog image if requested
+        if ($request->filled('deleted_image')) {
+            if ($blog->image && Storage::disk('public')->exists($blog->image)) {
+                Storage::disk('public')->delete($blog->image);
+            }
+            $data['image'] = null; // Important: clear DB value
+        }
         $blog->update($data);
 
-        // ✅ Update or create sections
+        //Update or create sections
         if (!empty($data['sections'])) {
             foreach ($data['sections'] as $section) {
                 $attachment = isset($section['attachment']) && $section['attachment'] instanceof \Illuminate\Http\UploadedFile
                     ? $section['attachment']->store('blogs/sections', 'public')
                     : null;
 
-                \App\Models\BlogSection::updateOrCreate(
+                BlogSection::updateOrCreate(
                     ['id' => $section['id'] ?? null, 'blog_id' => $blog->id],
                     [
                         'heading'    => $section['heading'] ?? null,
@@ -103,9 +109,9 @@ class BlogController extends BaseController
             }
         }
 
-        // ✅ Delete sections if provided
+        //Delete sections if provided
         if ($request->filled('deleted_sections')) {
-            $sectionsToDelete = \App\Models\BlogSection::whereIn('id', $request->deleted_sections)
+            $sectionsToDelete = BlogSection::whereIn('id', $request->deleted_sections)
                 ->where('blog_id', $blog->id)
                 ->get();
 
@@ -118,7 +124,7 @@ class BlogController extends BaseController
         }
 
         if ($request->filled('deleted_attachments')) {
-            $sections = \App\Models\BlogSection::whereIn('id', $request->deleted_attachments)
+            $sections = BlogSection::whereIn('id', $request->deleted_attachments)
                 ->where('blog_id', $blog->id)
                 ->get();
 
@@ -133,7 +139,7 @@ class BlogController extends BaseController
         $blog->load('sections');
 
         return $this->sendResponse(
-            [new \App\Http\Resources\BlogResource($blog)],
+            [new BlogResource($blog)],
             'Blogs retrieved successfully.'
         );
     }

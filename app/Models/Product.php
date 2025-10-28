@@ -11,7 +11,8 @@ class Product extends Model
         'description',
         'thumbnail',
         'gallery',
-        'colors',
+        'category_id',
+        'color_id',
         'in_stock',
         'price',
         'discount_price',
@@ -24,4 +25,14 @@ class Product extends Model
         'in_stock' => 'boolean',
         'status' => 'boolean',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function colors()
+    {
+        return $this->belongsToMany(Color::class);
+    }
 }
