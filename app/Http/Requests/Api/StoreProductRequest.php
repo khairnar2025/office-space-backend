@@ -14,16 +14,17 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|string|max:255',
+            'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'category_id' => 'nullable|exists:categories,id',
+            'colors' => 'nullable|array',
+            'colors.*' => 'integer|exists:colors,id',
+
+            'in_stock' => 'boolean',
             'price' => 'required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'product_images' => 'nullable|array',
-            'product_images.*' => 'image|mimes:jpeg,png,jpg|max:4096',
-            'colors' => 'nullable|array',
-            'colors.*' => 'string|max:7',
-            'in_stock' => 'boolean',
             'status' => 'boolean',
         ];
     }

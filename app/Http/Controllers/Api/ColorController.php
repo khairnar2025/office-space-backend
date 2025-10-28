@@ -13,7 +13,7 @@ class ColorController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $colors = Color::latest()->paginate(10);
+        $colors = Color::latest()->get();
         return $this->sendResponse(ColorResource::collection($colors), 'Colors fetched successfully.');
     }
     // Public: limited info

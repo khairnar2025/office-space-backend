@@ -14,7 +14,7 @@ class UpdateColorRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'   => 'required|string|max:255|unique:colors,name,' . $this->route('color')->id,
+            'name'   => 'sometimes|required|string|max:255|unique:colors,name,' . $this->route('color')->id,
             'status' => 'boolean',
         ];
     }

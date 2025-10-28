@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
@@ -13,20 +12,15 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
-            'thumbnail' => $this->thumbnail
-                ? asset('storage/' . $this->thumbnail)
-                : null,
-
-            // ✅ Full URLs for gallery images
-            'gallery' => $this->gallery
-                ? collect($this->gallery)->map(fn($img) => asset('storage/' . $img))
-                : [],
-            'colors' => $this->colors ?? [],
+            'thumbnail' => $this->thumbnail_url,
+            'gallery' => $this->gallery_urls,
+            'category_id' => $this->category_id,
+            'category_name' => $this->category->name,
+            'colors' => $this->colors->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'status' => (int)$c->status]),
+            'in_stock' => (int)$this->in_stock,
             'price' => $this->price,
             'discount_price' => $this->discount_price,
-            'in_stock' => (bool) $this->in_stock ? 1 : 0,
-            'status' => (bool) $this->status ? 1 : 0,
-            'created_at' => $this->created_at->toDateTimeString(),
+            'status' => (int)$this->status,
         ];
     }
 }

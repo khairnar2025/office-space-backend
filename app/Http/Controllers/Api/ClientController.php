@@ -14,7 +14,7 @@ class ClientController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $clients = Client::latest()->paginate(10);
+        $clients = Client::latest()->get();
         return $this->sendResponse(ClientResource::collection($clients), 'Clients fetched successfully.');
     }
     // Public: limited info

@@ -13,7 +13,7 @@ class CategoryController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $categories = Category::latest()->paginate(10);
+        $categories = Category::latest()->get();
         return $this->sendResponse(CategoryResource::collection($categories), 'Categories fetched successfully.');
     }
     // Public: limited info

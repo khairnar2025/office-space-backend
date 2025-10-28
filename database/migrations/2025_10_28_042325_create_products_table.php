@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('thumbnail')->nullable();
             $table->json('gallery')->nullable();
             $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
-            $table->foreignId('color_id')->nullable()->constrained('colors')->nullOnDelete();
             $table->boolean('in_stock')->default(true);
             $table->decimal('price', 10, 2);
             $table->decimal('discount_price', 10, 2)->nullable();

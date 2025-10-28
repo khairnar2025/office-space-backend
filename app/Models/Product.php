@@ -12,7 +12,6 @@ class Product extends Model
         'thumbnail',
         'gallery',
         'category_id',
-        'color_id',
         'in_stock',
         'price',
         'discount_price',
@@ -21,7 +20,6 @@ class Product extends Model
 
     protected $casts = [
         'gallery' => 'array',
-        'colors' => 'array',
         'in_stock' => 'boolean',
         'status' => 'boolean',
     ];
@@ -34,5 +32,28 @@ class Product extends Model
     public function colors()
     {
         return $this->belongsToMany(Color::class);
+    }
+
+    public function getThumbnailUrlAttribute()
+    {
+        return $this->thumbnail ? asset('storage/' . $this->thumbnail) : null;
+    }
+
+    public function getGalleryUrlsAttribute()
+    {
+        $gallery = $this->gallery ?? [];
+
+        // Make sure it's an array
+        if (!is_array($gallery)) {
+            $gallery = json_decode($gallery, true) ?? [];
+        }
+
+        // Map only valid strings
+        return array_values(array_filter(array_map(function ($image) {
+            if (is_string($image) && !empty($image)) {
+                return asset('storage/' . $image);
+            }
+            return null;
+        }, $gallery)));
     }
 }

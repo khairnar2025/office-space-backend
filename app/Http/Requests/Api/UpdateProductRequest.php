@@ -16,17 +16,20 @@ class UpdateProductRequest extends FormRequest
         return [
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'category_id' => 'nullable|exists:categories,id',
+            'colors' => 'nullable|array',
+            'colors.*' => 'integer|exists:colors,id',
+
+            'in_stock' => 'boolean',
             'price' => 'sometimes|required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'product_images' => 'nullable|array',
-            'product_images.*' => 'image|mimes:jpeg,png,jpg|max:4096',
-            'colors' => 'nullable|array',
-            'colors.*' => 'string|max:7',
-            'in_stock' => 'boolean',
             'status' => 'boolean',
-            'remove_thumbnail' => 'nullable|boolean',
-            'remove_gallery' => 'nullable|boolean',
+            'delete_gallery' => 'nullable|array',
+            'delete_gallery.*' => 'integer',
+            'delete_colors' => 'nullable|array',
+            'delete_colors.*' => 'integer|exists:colors,id',
         ];
     }
 }
