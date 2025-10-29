@@ -25,12 +25,13 @@ Route::get('products/{id}', [ProductController::class, 'publicShow']);
 Route::get('products', [ProductController::class, 'publicIndex']);
 Route::get('delivery-pincodes', [DeliveryPincodeController::class, 'publicIndex']);
 Route::delete('cart/clear', [CartController::class, 'clear'])->name('cart.clear');
-Route::apiResource('cart', CartController::class)->only([
-    'index',
-    'store',
-    'update',
-    'destroy'
-]);
+Route::controller(CartController::class)->group(function () {
+    Route::get('cart', 'index');
+    Route::post('cart', 'store');
+    Route::delete('cart/clear', 'clear');
+    Route::put('cart/items/{item}', 'update');
+    Route::delete('cart/items/{item}', 'destroy');
+});
 Route::middleware('check.status')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 });

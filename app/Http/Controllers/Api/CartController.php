@@ -187,7 +187,6 @@ class CartController extends BaseController
         $request->validate([
             'quantity' => 'required|integer|min:1',
         ]);
-
         $item->update(['quantity' => $request->quantity]);
 
         $cart = $item->cart()->with('items.product', 'items.color')->first();
