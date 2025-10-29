@@ -65,4 +65,8 @@ class Product extends Model
             'delivery_pincode_id' // foreign key on pivot table for DeliveryPincode
         );
     }
+    public function getFinalPriceAttribute()
+    {
+        return $this->discount_price ?? $this->price;
+    }
 }

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('profile_image')->nullable();
             $table->json('billing_address')->nullable();
             $table->json('shipping_address')->nullable();
-            $table->enum('role', ['admin', 'client'])->default('client');
+            $table->enum('role', ['admin', 'user'])->default('user');
             $table->boolean('status')->default(true);
             $table->rememberToken();
             $table->timestamps();

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ColorController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DeliveryPincodeController;
+use App\Http\Controllers\Api\CartController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -23,7 +24,13 @@ Route::get('products/{product}/check-pincode/{pincode}', [ProductController::cla
 Route::get('products/{id}', [ProductController::class, 'publicShow']);
 Route::get('products', [ProductController::class, 'publicIndex']);
 Route::get('delivery-pincodes', [DeliveryPincodeController::class, 'publicIndex']);
-
+Route::delete('cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+Route::apiResource('cart', CartController::class)->only([
+    'index',
+    'store',
+    'update',
+    'destroy'
+]);
 Route::middleware('check.status')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 });
