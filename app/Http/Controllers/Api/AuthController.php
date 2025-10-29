@@ -68,103 +68,11 @@ class AuthController extends BaseController
         $prefix = explode('@', $email)[0];
         return ucfirst(preg_replace('/[^A-Za-z0-9]/', '', $prefix));
     }
-    // public function login(LoginRequest $request)
-    // {
-    //     $validated = $request->validated();
-    //     $user = User::where('email', $validated['email'])->first();
-
-    //     if (!$user) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'No account found with this email. Please register first.'
-    //         ], 404);
-    //     }
-
-    //     if (!$user->status) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Your account is inactive. Please contact support.'
-    //         ], 403);
-    //     }
-
-    //     if (!Hash::check($validated['password'], $user->password)) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'The password you entered is incorrect. Please try again.'
-    //         ], 401);
-    //     }
-
-    //     $token = $user->createToken('API Token')->plainTextToken;
-
-    //     $sessionId = $request->header('X-Session-Id');
-    //     $mergedCart = null;
-
-    //     if ($sessionId) {
-    //         $guestCart = Cart::where('session_id', $sessionId)->with('items.product', 'items.color')->first();
-
-    //         if ($guestCart) {
-    //             // If user already has a cart, merge guest cart into user cart
-    //             $userCart = Cart::where('user_id', $user->id)
-    //                 ->with('items.product', 'items.color')
-    //                 ->first();
-
-    //             if ($userCart) {
-    //                 foreach ($guestCart->items as $item) {
-    //                     $existing = $userCart->items()
-    //                         ->where('product_id', $item->product_id)
-    //                         ->where('color_id', $item->color_id)
-    //                         ->first();
-
-    //                     if ($existing) {
-    //                         $existing->increment('quantity', $item->quantity);
-    //                     } else {
-    //                         $userCart->items()->create([
-    //                             'product_id' => $item->product_id,
-    //                             'color_id'   => $item->color_id,
-    //                             'quantity'   => $item->quantity,
-    //                             'price'      => $item->price,
-    //                         ]);
-    //                     }
-    //                 }
-
-    //                 // Delete guest cart
-    //                 $guestCart->delete();
-    //                 $mergedCart = $userCart->fresh('items.product', 'items.color');
-    //             } else {
-    //                 $guestCart->update([
-    //                     'user_id' => $user->id,
-    //                     'session_id' => null,
-    //                 ]);
-    //                 $mergedCart = $guestCart->fresh('items.product', 'items.color');
-    //             }
-    //         }
-    //     }
-
-    //     $responseData = [
-    //         'success' => true,
-    //         'message' => 'Login successful! Welcome back.',
-    //         'data' => [
-    //             'user' => [
-    //                 'id'    => $user->id,
-    //                 'name'  => $user->name,
-    //                 'email' => $user->email,
-    //                 'role'  => $user->role,
-    //             ],
-    //             'token' => $token,
-    //             'token_type' => 'Bearer',
-    //         ],
-    //     ];
-    //     if ($mergedCart) {
-    //         $responseData['data']['cart'] = $mergedCart;
-    //     }
-
-    //     return response()->json($responseData, 200);
-    // }
-
     public function login(LoginRequest $request)
     {
         $validated = $request->validated();
         $user = User::where('email', $validated['email'])->first();
+
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -178,6 +86,7 @@ class AuthController extends BaseController
                 'message' => 'Your account is inactive. Please contact support.'
             ], 403);
         }
+
         if (!Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'success' => false,
@@ -187,7 +96,51 @@ class AuthController extends BaseController
 
         $token = $user->createToken('API Token')->plainTextToken;
 
-        return response()->json([
+        $sessionId = $request->header('X-Session-Id');
+        $mergedCart = null;
+
+        if ($sessionId) {
+            $guestCart = Cart::where('session_id', $sessionId)->with('items.product', 'items.color')->first();
+
+            if ($guestCart) {
+                // If user already has a cart, merge guest cart into user cart
+                $userCart = Cart::where('user_id', $user->id)
+                    ->with('items.product', 'items.color')
+                    ->first();
+
+                if ($userCart) {
+                    foreach ($guestCart->items as $item) {
+                        $existing = $userCart->items()
+                            ->where('product_id', $item->product_id)
+                            ->where('color_id', $item->color_id)
+                            ->first();
+
+                        if ($existing) {
+                            $existing->increment('quantity', $item->quantity);
+                        } else {
+                            $userCart->items()->create([
+                                'product_id' => $item->product_id,
+                                'color_id'   => $item->color_id,
+                                'quantity'   => $item->quantity,
+                                'price'      => $item->price,
+                            ]);
+                        }
+                    }
+
+                    // Delete guest cart
+                    $guestCart->delete();
+                    $mergedCart = $userCart->fresh('items.product', 'items.color');
+                } else {
+                    $guestCart->update([
+                        'user_id' => $user->id,
+                        'session_id' => null,
+                    ]);
+                    $mergedCart = $guestCart->fresh('items.product', 'items.color');
+                }
+            }
+        }
+
+        $responseData = [
             'success' => true,
             'message' => 'Login successful! Welcome back.',
             'data' => [
@@ -198,10 +151,57 @@ class AuthController extends BaseController
                     'role'  => $user->role,
                 ],
                 'token' => $token,
-                'token_type' => 'Bearer'
-            ]
-        ], 200);
+                'token_type' => 'Bearer',
+            ],
+        ];
+        if ($mergedCart) {
+            $responseData['data']['cart'] = $mergedCart;
+        }
+
+        return response()->json($responseData, 200);
     }
+
+    // public function login(LoginRequest $request)
+    // {
+    //     $validated = $request->validated();
+    //     $user = User::where('email', $validated['email'])->first();
+    //     if (!$user) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'No account found with this email. Please register first.'
+    //         ], 404);
+    //     }
+
+    //     if (!$user->status) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Your account is inactive. Please contact support.'
+    //         ], 403);
+    //     }
+    //     if (!Hash::check($validated['password'], $user->password)) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'The password you entered is incorrect. Please try again.'
+    //         ], 401);
+    //     }
+
+    //     $token = $user->createToken('API Token')->plainTextToken;
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Login successful! Welcome back.',
+    //         'data' => [
+    //             'user' => [
+    //                 'id'    => $user->id,
+    //                 'name'  => $user->name,
+    //                 'email' => $user->email,
+    //                 'role'  => $user->role,
+    //             ],
+    //             'token' => $token,
+    //             'token_type' => 'Bearer'
+    //         ]
+    //     ], 200);
+    // }
     public function logout()
     {
         auth()->user()->tokens()->delete();

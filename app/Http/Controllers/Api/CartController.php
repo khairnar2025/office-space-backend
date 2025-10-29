@@ -9,6 +9,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class CartController extends BaseController
 {
@@ -99,12 +100,62 @@ class CartController extends BaseController
     /**
      * View cart items
      */
+    // public function index(Request $request)
+    // {
+    //     $user = Auth::guard('sanctum')->user();
+    //     if ($user) {
+    //         // Use user_id
+    //         $cart = Cart::where('user_id', $user->id)
+    //             ->with('items.product', 'items.color')
+    //             ->first();
+    //     } else {
+    //         // Guest user
+    //         $sessionId = $this->getSessionId($request);
+    //         $cart = Cart::where('session_id', $sessionId)
+    //             ->with('items.product', 'items.color')
+    //             ->first();
+    //     }
+
+    //     if (!$cart) {
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => [
+    //                 'cart' => null,
+    //                 'session_id' => $sessionId,
+    //             ],
+    //             'message' => 'No cart found for this session.',
+    //         ])->header('X-Session-Id', $sessionId);
+    //     }
+
+    //     return response()
+    //         ->json($this->sendResponse(
+    //             [
+    //                 'cart' => $cart,
+    //                 'session_id' => $sessionId,
+    //             ],
+    //             'Cart retrieved successfully.'
+    //         ))
+    //         ->header('X-Session-Id', $sessionId);
+    // }
+
     public function index(Request $request)
     {
+        $user = Auth::guard('sanctum')->user();
+
+        // Get sessionId anyway (needed for response header & data)
         $sessionId = $this->getSessionId($request);
 
-        // Only fetch existing cart
-        $cart = Cart::where('session_id', $sessionId)->with('items.product', 'items.color')->first();
+        if ($user) {
+            // Use user_id
+            $cart = Cart::where('user_id', $user->id)
+                ->with('items.product', 'items.color')
+                ->first();
+        } else {
+            // Guest user
+            $cart = Cart::where('session_id', $sessionId)
+                ->with('items.product', 'items.color')
+                ->first();
+        }
 
         if (!$cart) {
             return response()->json([
@@ -127,7 +178,6 @@ class CartController extends BaseController
             ))
             ->header('X-Session-Id', $sessionId);
     }
-
 
     /**
      * Update cart item quantity
