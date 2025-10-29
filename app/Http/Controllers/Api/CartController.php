@@ -32,7 +32,7 @@ class CartController extends BaseController
      */
     private function getOrCreateCart(Request $request)
     {
-        $user = $request->user();
+        $user = Auth::guard('sanctum')->user();
         $sessionId = $this->getSessionId($request);
 
         if ($user) {

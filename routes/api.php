@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DeliveryPincodeController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\RazorpayController;
+use App\Http\Controllers\Api\OrderController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -54,4 +56,11 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
     Route::get('user', [AuthController::class, 'user']);
     Route::post('/update-profile', [AuthController::class, 'updateProfile'])
         ->name('update-profile');
+    Route::prefix('orders')->controller(OrderController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::get('{order}', 'show');
+        Route::get('cancel/{order}', 'cancel');
+    });
 });
+Route::post('razorpay/create-order', [RazorpayController::class, 'createOrder']);
+Route::post('razorpay/verify-payment', [RazorpayController::class, 'verifyPayment']);
