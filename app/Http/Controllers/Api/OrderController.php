@@ -57,11 +57,11 @@ class OrderController extends BaseController
         $user = Auth::guard('sanctum')->user();
 
         if ($order->user_id !== $user->id) {
-            return $this->sendError('Unauthorized to cancel this order.', [], 403);
+            return $this->sendError('Unauthorized to cancel this order.', 403);
         }
 
         if ($order->status !== 'paid') {
-            return $this->sendError('Order cannot be cancelled.', [], 400);
+            return $this->sendError('Order cannot be cancelled.', 400);
         }
 
         $order->update(['status' => 'cancelled']);

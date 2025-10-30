@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use App\Http\Requests\Api\UpdateProfileRequest;
+use App\Http\Requests\Api\UpdateAddressesRequest;
 
 class AuthController extends BaseController
 {
@@ -220,5 +224,57 @@ class AuthController extends BaseController
             'data'    => new UserResource($user),
             'message' => 'User retrieved successfully',
         ]);
+    }
+    // Update account details (name, email, password, profile_image)
+    public function updateProfile(UpdateProfileRequest $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if ($request->hasFile('profile_image')) {
+            if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
+                Storage::disk('public')->delete($user->profile_image);
+            }
+
+            $user->profile_image = $request->file('profile_image')->store('users/profile', 'public');
+        }
+
+        if ($request->filled('name')) $user->name = $request->name;
+        if ($request->filled('email')) $user->email = $request->email;
+        if ($request->filled('password')) $user->password = Hash::make($request->password);
+
+        $user->save();
+
+        return $this->sendResponse(new UserResource($user), 'Account updated successfully.');
+    }
+
+    // Get addresses
+    public function addresses()
+    {
+        $user = Auth::guard('sanctum')->user();
+        return $this->sendResponse([
+            'billing_address'  => $user->billing_address ? json_decode($user->billing_address, true) : null,
+            'shipping_address' => $user->shipping_address ? json_decode($user->shipping_address, true) : null,
+        ], 'Addresses fetched successfully.');
+    }
+
+    // Update addresses
+    public function updateAddresses(UpdateAddressesRequest $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if ($request->filled('billing_address')) {
+            $user->billing_address = json_encode($request->billing_address);
+        }
+
+        if ($request->filled('shipping_address')) {
+            $user->shipping_address = json_encode($request->shipping_address);
+        }
+
+        $user->save();
+
+        return $this->sendResponse([
+            'billing_address'  => $user->billing_address ? json_decode($user->billing_address, true) : null,
+            'shipping_address' => $user->shipping_address ? json_decode($user->shipping_address, true) : null,
+        ], 'Addresses updated successfully.');
     }
 }

@@ -49,13 +49,14 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
         Route::apiResource('products', ProductController::class);
         Route::apiResource('clients', ClientController::class);
         Route::apiResource('delivery-pincodes', DeliveryPincodeController::class);
-
-        // Route::delete('blogs/{blog}/sections/{section}', [BlogSectionController::class, 'destroy']);
-        // Route::delete('blogs/{blog}/sections/{section}/attachment', [BlogSectionController::class, 'deleteAttachment']);
     });
     Route::get('user', [AuthController::class, 'user']);
-    Route::post('/update-profile', [AuthController::class, 'updateProfile'])
+    Route::post('user/update-profile', [AuthController::class, 'updateProfile'])
         ->name('update-profile');
+    Route::get('user/addresses', [AuthController::class, 'addresses']);
+    Route::put('user/addresses', [AuthController::class, 'updateAddresses']);
+
+
     Route::prefix('orders')->controller(OrderController::class)->group(function () {
         Route::get('/', 'index');
         Route::get('{order}', 'show');
