@@ -184,7 +184,10 @@ class RazorpayController extends BaseController
                 'razorpay_order_id'   => $request->razorpay_order_id,
                 'razorpay_payment_id' => $request->razorpay_payment_id,
                 'razorpay_signature'  => $request->razorpay_signature,
-                'total_amount'        => $cart->items->sum(fn($i) => $i->subtotal),
+                'total_amount' => $cart->items->sum(function ($item) {
+                    return ($item->product->final_price * $item->quantity);
+                }),
+
                 'currency'            => 'INR',
                 'status'              => 'paid'
             ]));
@@ -206,7 +209,6 @@ class RazorpayController extends BaseController
             DB::commit();
 
             return $this->sendResponse(['order_id' => $order->id], 'Payment Verified & Order Placed');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->sendError($e->getMessage(), 500);

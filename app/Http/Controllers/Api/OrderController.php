@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\BaseController;
+use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,13 +16,18 @@ class OrderController extends BaseController
     public function index(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
+
         $orders = Order::where('user_id', $user->id)
             ->with('items.product', 'items.color')
             ->latest()
             ->get();
 
-        return $this->sendResponse($orders, 'Order list retrieved successfully.');
+        return $this->sendResponse(
+            OrderResource::collection($orders),
+            'Order list retrieved successfully.'
+        );
     }
+
 
     /**
      * Show single order details
@@ -36,8 +42,12 @@ class OrderController extends BaseController
 
         $order->load('items.product', 'items.color');
 
-        return $this->sendResponse($order, 'Order details retrieved successfully.');
+        return $this->sendResponse(
+            new OrderResource($order),
+            'Order details retrieved successfully.'
+        );
     }
+
 
     /**
      * Cancel an order (if not yet shipped)
