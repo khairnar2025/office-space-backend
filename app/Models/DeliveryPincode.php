@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class DeliveryPincode extends Model
 {
-    protected $fillable = ['pincode', 'is_serviceable', 'delivery_days_min', 'delivery_days_max'];
+    protected $fillable = ['pincode', 'shipping_cost', 'is_serviceable', 'delivery_days_min', 'delivery_days_max'];
 
     public function products()
     {

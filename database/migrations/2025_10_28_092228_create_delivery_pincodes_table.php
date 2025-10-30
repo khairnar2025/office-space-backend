@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('delivery_pincodes', function (Blueprint $table) {
             $table->id();
             $table->string('pincode', 10)->unique();
+            $table->decimal('shipping_cost', 8, 2)->default(0);
             $table->boolean('is_serviceable')->default(true);
             $table->integer('delivery_days_min')->default(2);
             $table->integer('delivery_days_max')->default(5);

@@ -125,7 +125,6 @@ class RazorpayController extends BaseController
 
             // ✅ Convert object to array before sending response
             return $this->sendResponse(['order' => $order->toArray()], 'Order created successfully');
-
         } catch (\Exception $e) {
             return $this->sendError($e->getMessage(), 500);
         }
@@ -134,6 +133,87 @@ class RazorpayController extends BaseController
     /**
      * Verify Razorpay Payment
      */
+    // public function verifyPayment(Request $request)
+    // {
+    //     $request->validate([
+    //         'razorpay_order_id'   => 'required|string',
+    //         'razorpay_payment_id' => 'required|string',
+    //         'razorpay_signature'  => 'required|string',
+    //         'shipping'            => 'required|array',
+    //         'shipping_cost'       => 'nullable|numeric|min:0',
+    //     ]);
+
+    //     try {
+    //         $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
+
+    //         // ✅ Changed: Use Razorpay's official utility method for signature verification
+    //         $attributes = [
+    //             'razorpay_order_id' => $request->razorpay_order_id,
+    //             'razorpay_payment_id' => $request->razorpay_payment_id,
+    //             'razorpay_signature' => $request->razorpay_signature,
+    //         ];
+
+    //         try {
+    //             $api->utility->verifyPaymentSignature($attributes);
+    //         } catch (\Razorpay\Api\Errors\SignatureVerificationError $e) {
+    //             return $this->sendError('Invalid Signature: ' . $e->getMessage(), 400);
+    //         }
+
+    //         // ✅ Fetch payment from Razorpay to ensure it is captured
+    //         $payment = $api->payment->fetch($request->razorpay_payment_id);
+    //         if ($payment->status !== 'captured') {
+    //             return $this->sendError('Payment not captured', 400);
+    //         }
+
+    //         // ✅ Get user or guest cart
+    //         $user = auth()->user();
+    //         $cart = $user
+    //             ? Cart::where('user_id', $user->id)->first()
+    //             : Cart::where('session_id', $request->header('X-Session-Id'))->first();
+
+    //         if (!$cart) {
+    //             return $this->sendError('Cart not found', 404);
+    //         }
+
+    //         DB::beginTransaction();
+
+    //         // ✅ Create order
+    //         $order = Order::create(array_merge($request->shipping, [
+    //             'user_id'             => $user->id ?? null,
+    //             'session_id'          => $cart->session_id,
+    //             'razorpay_order_id'   => $request->razorpay_order_id,
+    //             'razorpay_payment_id' => $request->razorpay_payment_id,
+    //             'razorpay_signature'  => $request->razorpay_signature,
+    //             'total_amount' => $cart->items->sum(function ($item) {
+    //                 return ($item->product->final_price * $item->quantity);
+    //             }),
+
+    //             'currency'            => 'INR',
+    //             'status'              => 'paid'
+    //         ]));
+
+    //         // ✅ Create order items
+    //         foreach ($cart->items as $item) {
+    //             OrderItem::create([
+    //                 'order_id'   => $order->id,
+    //                 'product_id' => $item->product_id,
+    //                 'color_id'   => $item->color_id,
+    //                 'quantity'   => $item->quantity,
+    //                 'price'      => $item->product->final_price
+    //             ]);
+    //         }
+
+    //         // ✅ Clear cart
+    //         $cart->items()->delete();
+
+    //         DB::commit();
+
+    //         return $this->sendResponse(['order_id' => $order->id], 'Payment Verified & Order Placed');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return $this->sendError($e->getMessage(), 500);
+    //     }
+    // }
     public function verifyPayment(Request $request)
     {
         $request->validate([
@@ -141,12 +221,13 @@ class RazorpayController extends BaseController
             'razorpay_payment_id' => 'required|string',
             'razorpay_signature'  => 'required|string',
             'shipping'            => 'required|array',
+            'shipping_cost'       => 'nullable|numeric|min:0', // 👈 optional shipping cost
         ]);
 
         try {
             $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
 
-            // ✅ Changed: Use Razorpay's official utility method for signature verification
+            // Verify signature
             $attributes = [
                 'razorpay_order_id' => $request->razorpay_order_id,
                 'razorpay_payment_id' => $request->razorpay_payment_id,
@@ -159,13 +240,12 @@ class RazorpayController extends BaseController
                 return $this->sendError('Invalid Signature: ' . $e->getMessage(), 400);
             }
 
-            // ✅ Fetch payment from Razorpay to ensure it is captured
+            // Fetch payment
             $payment = $api->payment->fetch($request->razorpay_payment_id);
             if ($payment->status !== 'captured') {
                 return $this->sendError('Payment not captured', 400);
             }
 
-            // ✅ Get user or guest cart
             $user = auth()->user();
             $cart = $user
                 ? Cart::where('user_id', $user->id)->first()
@@ -177,6 +257,14 @@ class RazorpayController extends BaseController
 
             DB::beginTransaction();
 
+            // 🧮 Calculate totals
+            $productTotal = $cart->items->sum(function ($item) {
+                return $item->product->final_price * $item->quantity;
+            });
+
+            $shippingCost = $request->shipping_cost ?? 0;
+            $grandTotal   = $productTotal + $shippingCost;
+
             // ✅ Create order
             $order = Order::create(array_merge($request->shipping, [
                 'user_id'             => $user->id ?? null,
@@ -184,12 +272,11 @@ class RazorpayController extends BaseController
                 'razorpay_order_id'   => $request->razorpay_order_id,
                 'razorpay_payment_id' => $request->razorpay_payment_id,
                 'razorpay_signature'  => $request->razorpay_signature,
-                'total_amount' => $cart->items->sum(function ($item) {
-                    return ($item->product->final_price * $item->quantity);
-                }),
-
+                'subtotal'            => $productTotal,
+                'shipping_cost'       => $shippingCost,
+                'total_amount'        => $grandTotal,
                 'currency'            => 'INR',
-                'status'              => 'paid'
+                'status'              => 'paid',
             ]));
 
             // ✅ Create order items
@@ -208,7 +295,11 @@ class RazorpayController extends BaseController
 
             DB::commit();
 
-            return $this->sendResponse(['order_id' => $order->id], 'Payment Verified & Order Placed');
+            return $this->sendResponse([
+                'order_id' => $order->id,
+                'total_amount' => $grandTotal,
+                'shipping_cost' => $shippingCost
+            ], 'Payment Verified & Order Placed');
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->sendError($e->getMessage(), 500);

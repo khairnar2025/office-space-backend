@@ -16,8 +16,9 @@ class SystemNotificationMail extends Mailable
     public $ctaText;
     public $ctaUrl;
     public $user;
+    public $recipientName;
 
-    public function __construct($user, $subjectText, $title, $emailContent, $ctaText = null, $ctaUrl = null)
+    public function __construct($user, $subjectText, $title, $emailContent, $ctaText = null, $ctaUrl = null, $recipientName = null)
     {
         $this->user = $user;
         $this->subjectText = $subjectText;
@@ -25,6 +26,7 @@ class SystemNotificationMail extends Mailable
         $this->emailContent = $emailContent;
         $this->ctaText = $ctaText;
         $this->ctaUrl = $ctaUrl;
+        $this->recipientName = $recipientName ?? ($user->name ?? 'User');
     }
 
     public function build()

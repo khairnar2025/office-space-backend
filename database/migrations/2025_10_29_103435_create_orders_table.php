@@ -20,7 +20,8 @@ return new class extends Migration
             $table->string('razorpay_order_id')->nullable();
             $table->string('razorpay_payment_id')->nullable();
             $table->string('razorpay_signature')->nullable();
-
+            $table->decimal('subtotal', 10, 2)->default(0);
+            $table->decimal('shipping_charge', 5, 2)->default(0);
             $table->decimal('total_amount', 10, 2)->default(0);
             $table->string('currency', 10)->default('INR');
 

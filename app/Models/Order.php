@@ -12,6 +12,8 @@ class Order extends Model
         'razorpay_order_id',
         'razorpay_payment_id',
         'razorpay_signature',
+        'subtotal',
+        'shipping_cost',
         'total_amount',
         'currency',
         'name',

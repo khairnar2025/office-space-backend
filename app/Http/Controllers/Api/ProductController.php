@@ -227,6 +227,7 @@ class ProductController extends BaseController
 
         return response()->json([
             'available' => 1,
+            'shipping_cost' => $pincodeRecord->shipping_cost ?? 0,
             'expected_delivery' => sprintf(
                 '%d–%d days',
                 $pincodeRecord->delivery_days_min,

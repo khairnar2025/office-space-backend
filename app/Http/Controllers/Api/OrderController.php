@@ -7,6 +7,9 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SystemNotificationMail;
+use App\Models\User;
 
 class OrderController extends BaseController
 {
@@ -91,6 +94,60 @@ class OrderController extends BaseController
         }
 
         $order->update(['status' => 'cancelled']);
+
+        /**
+         * 📨 Send Cancellation Emails
+         */
+
+        try {
+            // 1️⃣ Prepare Data
+            $adminUser = User::where('role', 'admin')->first(); // or your own admin logic
+            $orderId = $order->id;
+
+            // 2️⃣ Send Email to Admin
+            $adminSubject = "Order #{$orderId} Cancelled by {$user->name}";
+            $adminTitle = 'Order Cancelled Notification';
+            $adminContent = "
+            Order ID: {$orderId}<br>
+            Customer Name: {$user->name}<br>
+            Customer Email: {$user->email}<br>
+            Status: Cancelled<br>
+        ";
+
+            Mail::to($adminUser->email)
+                ->send(new SystemNotificationMail(
+                    $order,
+                    $adminSubject,
+                    $adminTitle,
+                    $adminContent,
+                    null,
+                    null,
+                    'Admin'
+                ));
+
+            // 3️⃣ Send Confirmation Email to Customer
+            $userSubject = "Your Order #{$orderId} Has Been Cancelled";
+            $userTitle = 'Order Cancellation Confirmation';
+            $userContent = "
+            Your order #{$orderId} has been successfully cancelled.<br>
+            If you have any questions, please contact support.<br><br>
+            Thank you.
+        ";
+
+            Mail::to($user->email)
+                ->send(new SystemNotificationMail(
+                    $order,
+                    $userSubject,
+                    $userTitle,
+                    $userContent,
+                    null,
+                    null,
+                    $user->name
+                ));
+        } catch (\Exception $e) {
+            // Optional: Log any mail errors without breaking the response
+            \Log::error('Cancel mail failed: ' . $e->getMessage());
+        }
 
         return $this->sendResponse($order, 'Order cancelled successfully.');
     }
