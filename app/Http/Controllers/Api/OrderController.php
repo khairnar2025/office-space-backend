@@ -28,7 +28,33 @@ class OrderController extends BaseController
         );
     }
 
+    /**
+     * Admin: List all orders with filters
+     */
+    public function adminIndex(Request $request)
+    {
+        $query = Order::with(['items.product', 'items.color', 'user'])
+            ->latest();
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $query->whereBetween('created_at', [$request->date_from, $request->date_to]);
+        }
+
+        $orders = $query->paginate(10);
+
+        return $this->sendResponse(
+            OrderResource::collection($orders),
+            'All orders retrieved successfully.'
+        );
+    }
     /**
      * Show single order details
      */

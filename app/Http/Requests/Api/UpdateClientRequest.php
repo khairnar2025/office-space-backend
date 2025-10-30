@@ -17,7 +17,7 @@ class UpdateClientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'sometimes|required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'logo'  => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'status' => 'boolean',
         ];

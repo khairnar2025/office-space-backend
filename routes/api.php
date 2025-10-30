@@ -10,8 +10,12 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DeliveryPincodeController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\EnquiryController;
 use App\Http\Controllers\Api\RazorpayController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\Auth\ForgotPasswordController;
+use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -27,6 +31,9 @@ Route::get('products/{id}', [ProductController::class, 'publicShow']);
 Route::get('products', [ProductController::class, 'publicIndex']);
 Route::get('delivery-pincodes', [DeliveryPincodeController::class, 'publicIndex']);
 Route::delete('cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+// Forgot & Reset Password (API)
+Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+Route::post('reset-password', [ResetPasswordController::class, 'resetPassword']);
 Route::controller(CartController::class)->group(function () {
     Route::get('cart', 'index');
     Route::post('cart', 'store');
@@ -34,6 +41,7 @@ Route::controller(CartController::class)->group(function () {
     Route::put('cart/items/{item}', 'update');
     Route::delete('cart/items/{item}', 'destroy');
 });
+Route::post('/contact-us', [EnquiryController::class, 'submit']);
 Route::middleware('check.status')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 });
@@ -49,6 +57,12 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
         Route::apiResource('products', ProductController::class);
         Route::apiResource('clients', ClientController::class);
         Route::apiResource('delivery-pincodes', DeliveryPincodeController::class);
+        Route::prefix('users')->group(function () {
+            Route::get('/', [UserController::class, 'index']);
+            Route::patch('/{id}/status', [UserController::class, 'changeStatus']);
+            Route::get('/{id}/addresses', [UserController::class, 'showAddresses']);
+        });
+        Route::get('orders', [OrderController::class, 'adminIndex']);
     });
     Route::get('user', [AuthController::class, 'user']);
     Route::post('user/update-profile', [AuthController::class, 'updateProfile'])

@@ -13,7 +13,7 @@
 
         <!-- Header -->
         <div
-            style="background:linear-gradient(to bottom, #f8c315, #fcd764); color:#2c3e50; padding:30px 20px; text-align:center;">
+            style="background:linear-gradient(to bottom, #325B39, #244129); color:#2c3e50; padding:30px 20px; text-align:center;">
             <h1 style="margin:0; font-size:24px; font-weight:700;">{{ $title }}</h1>
             <p style="margin:5px 0 0; font-size:14px; opacity:0.85;">{{ \Carbon\Carbon::now()->format('F d, Y') }}</p>
         </div>
@@ -28,7 +28,7 @@
             @if ($ctaText && $ctaUrl)
                 <p style="margin-top:25px;">
                     <a href="{{ $ctaUrl }}"
-                        style="display:inline-block; background:#f8c315; color:#2c3e50; padding:12px 25px; border-radius:8px; text-decoration:none; font-weight:600;">
+                        style="display:inline-block; background:#244129; color:#2c3e50; padding:12px 25px; border-radius:8px; text-decoration:none; font-weight:600;">
                         {{ $ctaText }}
                     </a>
                 </p>
