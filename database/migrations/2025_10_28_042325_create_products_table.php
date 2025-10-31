@@ -15,12 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->string('thumbnail')->nullable();
-            $table->json('gallery')->nullable();
-            $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
-            $table->boolean('in_stock')->default(true);
-            $table->decimal('price', 10, 2);
-            $table->decimal('discount_price', 10, 2)->nullable();
+            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
             $table->boolean('status')->default(true);
             $table->timestamps();
         });

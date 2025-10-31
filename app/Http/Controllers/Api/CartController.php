@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\BaseController;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\DeliveryPincode;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -59,7 +60,7 @@ class CartController extends BaseController
         ]);
 
         if ($validator->fails()) {
-            return $this->sendError('Validation Error', $validator->errors(), 422);
+            return $this->sendError($validator->errors(), 422);
         }
 
         [$cart, $sessionId] = $this->getOrCreateCart($request);
@@ -100,9 +101,14 @@ class CartController extends BaseController
     /**
      * View cart items
      */
+
     // public function index(Request $request)
     // {
     //     $user = Auth::guard('sanctum')->user();
+
+    //     // Get sessionId anyway (needed for response header & data)
+    //     $sessionId = $this->getSessionId($request);
+
     //     if ($user) {
     //         // Use user_id
     //         $cart = Cart::where('user_id', $user->id)
@@ -110,7 +116,6 @@ class CartController extends BaseController
     //             ->first();
     //     } else {
     //         // Guest user
-    //         $sessionId = $this->getSessionId($request);
     //         $cart = Cart::where('session_id', $sessionId)
     //             ->with('items.product', 'items.color')
     //             ->first();
@@ -137,26 +142,22 @@ class CartController extends BaseController
     //         ))
     //         ->header('X-Session-Id', $sessionId);
     // }
-
     public function index(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
-
-        // Get sessionId anyway (needed for response header & data)
         $sessionId = $this->getSessionId($request);
 
         if ($user) {
-            // Use user_id
             $cart = Cart::where('user_id', $user->id)
                 ->with('items.product', 'items.color')
                 ->first();
         } else {
-            // Guest user
             $cart = Cart::where('session_id', $sessionId)
                 ->with('items.product', 'items.color')
                 ->first();
         }
 
+        // If no cart exists, return early
         if (!$cart) {
             return response()->json([
                 'success' => true,
@@ -168,10 +169,28 @@ class CartController extends BaseController
             ])->header('X-Session-Id', $sessionId);
         }
 
+        // --- Add subtotal and shipping calculation ---
+        $subtotal = $cart->items->sum(fn($item) => $item->product->final_price * $item->quantity);
+        $shippingCost = 0;
+        $pincode = $request->pincode;
+        if ($pincode) {
+            $delivery = DeliveryPincode::serviceable()->where('pincode', $pincode)->first();
+          
+            if ($delivery) {
+                $shippingCost = $delivery->shipping_cost;
+            }
+        }
+
+        $total = $subtotal + $shippingCost;
+
+        // --- Send response with the extra fields ---
         return response()
             ->json($this->sendResponse(
                 [
                     'cart' => $cart,
+                    'subtotal' => $subtotal,
+                    'shipping_charge' => $shippingCost,
+                    'total' => $total,
                     'session_id' => $sessionId,
                 ],
                 'Cart retrieved successfully.'

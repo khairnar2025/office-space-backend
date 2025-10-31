@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('message');
             $table->string('media_url')->nullable();
             $table->string('thumbnail_url')->nullable();
-            $table->boolean('status')->default(true);
+            $table->boolean('status')->default(false);
             $table->timestamps();
         });
     }

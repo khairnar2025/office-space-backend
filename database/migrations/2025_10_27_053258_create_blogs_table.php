@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('message');
             $table->string('image')->nullable();
-            $table->boolean('status')->default(true);
+            $table->boolean('status')->default(false);
             $table->timestamps();
         });
     }

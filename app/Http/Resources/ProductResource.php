@@ -3,31 +3,27 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
-    public function toArray($request): array
+    public function toArray($request)
     {
         return [
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
-            'thumbnail' => $this->thumbnail_url,
-            'gallery' => $this->gallery_urls,
             'category_id' => $this->category_id,
             'category_name' => $this->category?->name,
-            'colors' => $this->colors->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'status' => (int)$c->status]),
-            'delivery_pincodes' => $this->deliveryPincodes->map(fn($p) => [
-                'id' => $p->id,
-                'pincode' => $p->pincode,
-                'is_serviceable' => (int)$p->is_serviceable,
-                'delivery_days_min' => $p->delivery_days_min,
-                'delivery_days_max' => $p->delivery_days_max,
-            ]),
-            'in_stock' => (int)$this->in_stock,
-            'price' => $this->price,
-            'discount_price' => $this->discount_price,
-            'status' => (int)$this->status,
+            'status' => (bool)$this->status,
+
+            'thumbnail' => $this->when($this->thumbnail ?? false, fn() => $this->thumbnail ? Storage::url($this->thumbnail) : null),
+            'gallery' => collect($this->gallery ?? [])->map(fn($p) => Storage::url($p)),
+
+            'delivery_pincodes' => $this->deliveryPincodes->pluck('pincode'),
+            'variants' => ProductVariantResource::collection($this->whenLoaded('variants')),
+
+            'created_at' => $this->created_at->toDateTimeString(),
         ];
     }
 }

@@ -74,7 +74,7 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
     Route::prefix('orders')->controller(OrderController::class)->group(function () {
         Route::get('/', 'index');
         Route::get('{order}', 'show');
-        Route::get('cancel/{order}', 'cancel');
+        // Route::get('cancel/{order}', 'cancel');
     });
     Route::post('razorpay/create-order', [RazorpayController::class, 'createOrder']);
     Route::post('razorpay/verify-payment', [RazorpayController::class, 'verifyPayment']);

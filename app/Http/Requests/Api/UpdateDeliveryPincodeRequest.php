@@ -17,6 +17,7 @@ class UpdateDeliveryPincodeRequest extends FormRequest
 
         return [
             'pincode' => 'sometimes|required|string|max:10|unique:delivery_pincodes,pincode,' . $id,
+            'shipping_cost' => 'sometimes|numeric|min:0',
             'is_serviceable' => 'sometimes|boolean',
             'delivery_days_min' => 'sometimes|required|integer|min:0',
             'delivery_days_max' => 'sometimes|required|integer|min:0|gte:delivery_days_min',

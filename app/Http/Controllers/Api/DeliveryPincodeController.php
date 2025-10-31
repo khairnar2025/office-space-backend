@@ -13,13 +13,13 @@ class DeliveryPincodeController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $pincodes = DeliveryPincode::select('id', 'pincode', 'is_serviceable', 'delivery_days_min', 'delivery_days_max')->latest()->get();
+        $pincodes = DeliveryPincode::select('id', 'pincode', 'shipping_cost', 'is_serviceable', 'delivery_days_min', 'delivery_days_max')->latest()->get();
         return $this->sendResponse(DeliveryPincodeResource::collection($pincodes), 'Delivery pincodes fetched successfully.');
     }
     // Public: limited info
     public function publicIndex(): JsonResponse
     {
-        $pincodes = DeliveryPincode::select('id', 'pincode', 'is_serviceable', 'delivery_days_min', 'delivery_days_max')->serviceable()->latest()->get();
+        $pincodes = DeliveryPincode::select('id', 'pincode', 'shipping_cost', 'is_serviceable', 'delivery_days_min', 'delivery_days_max')->serviceable()->latest()->get();
         return $this->sendResponse(
             DeliveryPincodeResource::collection($pincodes),
             'Delivery pincodes retrieved successfully.'
