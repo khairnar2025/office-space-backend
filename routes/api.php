@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\ShippingSettingController;
+use App\Http\Controllers\Api\CouponController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -66,7 +67,7 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
         Route::get('orders', [OrderController::class, 'adminIndex']);
         Route::get('shipping-settings', [ShippingSettingController::class, 'index']);
         Route::put('shipping-settings', [ShippingSettingController::class, 'update']);
-
+        Route::apiResource('coupons', CouponController::class);
     });
     Route::get('user', [AuthController::class, 'user']);
     Route::post('user/update-profile', [AuthController::class, 'updateProfile'])

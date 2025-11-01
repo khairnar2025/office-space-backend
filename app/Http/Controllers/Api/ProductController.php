@@ -47,7 +47,16 @@ class ProductController extends BaseController
 
         return $this->sendResponse(new ProductResource($product), 'Product retrieved successfully');
     }
+    public function show($id)
+    {
+        $product = Product::with(['variants.color', 'deliveryPincodes', 'category'])->find($id);
 
+        if (!$product || !$product->status) {
+            return $this->sendError('Not available', 404);
+        }
+
+        return $this->sendResponse(new ProductResource($product), 'Product retrieved successfully');
+    }
     public function store(StoreProductRequest $request)
     {
         DB::beginTransaction();
