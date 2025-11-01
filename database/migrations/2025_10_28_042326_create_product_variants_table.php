@@ -19,7 +19,7 @@ return new class extends Migration {
 
             $table->string('thumbnail')->nullable();
             $table->json('gallery')->nullable();
-
+            $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }

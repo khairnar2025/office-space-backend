@@ -15,7 +15,7 @@ class BlogController extends BaseController
 {
     public function index()
     {
-        $blogs = Blog::with('sections')->latest()->get();
+        $blogs = Blog::with('sections')->latest()->paginate(10);
         return $this->sendResponse(AdminBlogResource::collection($blogs), 'Blogs retrieved successfully.');
     }
     // Public: limited info

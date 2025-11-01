@@ -72,4 +72,8 @@ class Product extends Model
     {
         return $this->discount_price ?? $this->price;
     }
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
+    }
 }

@@ -4,49 +4,66 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BaseController extends Controller
 {
     /**
      * Success response method.
-     *
-     * @param  mixed  $result
-     * @param  string $message
-     * @return \Illuminate\Http\JsonResponse
      */
     public function sendResponse($result, string $message): JsonResponse
     {
-        $response = [
-            'success' => true,
-            'data'    => $result,
-            'message' => $message,
-        ];
+        // ✅ Detect paginated collection
+        if (
+            is_object($result) &&
+            property_exists($result, 'resource') &&
+            $result->resource instanceof LengthAwarePaginator
+        ) {
+            $pagination = [
+                'current_page'   => $result->resource->currentPage(),
+                'last_page'      => $result->resource->lastPage(),
+                'per_page'       => $result->resource->perPage(),
+                'total'          => $result->resource->total(),
+                'next_page_url'  => $result->resource->nextPageUrl(),
+                'prev_page_url'  => $result->resource->previousPageUrl(),
+            ];
 
-        return response()->json($response, 200);
+            return response()->json([
+                'success'    => true,
+                'message'    => $message,
+                'data'       => $result,
+                'pagination' => $pagination,
+            ], 200);
+        }
+
+        // ✅ Normal response
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data'    => $result,
+        ], 200);
     }
 
     /**
-     * Return error response.
-     *
-     * @param  string|array  $error
-     * @param  int           $code
-     * @return \Illuminate\Http\JsonResponse
+     * Error response.
      */
     public function sendError($error, int $code = 400): JsonResponse
     {
-        $response = [
+        return response()->json([
             'success' => false,
             'data'    => null,
             'message' => $error,
-        ];
-
-        return response()->json($response, $code);
+        ], $code);
     }
-    public function sendSimpleResponse($id, $status, $message)
+
+    /**
+     * Simple response for basic updates or deletes.
+     */
+    public function sendSimpleResponse($id, $status, $message): JsonResponse
     {
         return response()->json([
-            'success' => true,
-            'id' => $id,
+            'success' => $status,
+            'id'      => $id,
             'message' => $message,
         ], 200);
     }

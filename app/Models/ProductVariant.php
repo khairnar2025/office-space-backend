@@ -15,10 +15,11 @@ class ProductVariant extends Model
         'quantity',
         'in_stock',
         'thumbnail',
-        'gallery'
+        'gallery',
+        'status'
     ];
 
-    protected $casts = ['gallery' => 'array', 'in_stock' => 'boolean'];
+    protected $casts = ['gallery' => 'array', 'in_stock' => 'boolean', 'status' => 'boolean'];
 
     protected $appends = ['thumbnail_url', 'gallery_urls', 'is_in_stock'];
 
@@ -33,13 +34,15 @@ class ProductVariant extends Model
 
     public function getThumbnailUrlAttribute()
     {
-        return $this->thumbnail ? Storage::url($this->thumbnail) : null;
+        return $this->thumbnail
+            ? asset(Storage::url($this->thumbnail))
+            : null;
     }
 
     public function getGalleryUrlsAttribute()
     {
         return collect($this->gallery ?? [])
-            ->map(fn($p) => Storage::url($p))
+            ->map(fn($p) => asset(Storage::url($p)))
             ->values()
             ->toArray();
     }
@@ -47,5 +50,9 @@ class ProductVariant extends Model
     public function getIsInStockAttribute()
     {
         return $this->quantity > 0;
+    }
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
     }
 }

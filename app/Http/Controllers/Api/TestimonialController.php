@@ -16,7 +16,7 @@ class TestimonialController extends BaseController
     // Admin: full management
     public function index(): JsonResponse
     {
-        $testimonials = Testimonial::latest()->get();
+        $testimonials = Testimonial::latest()->paginate(10);
         return $this->sendResponse(
             AdminTestimonialResource::collection($testimonials),
             'Testimonials retrieved successfully.'

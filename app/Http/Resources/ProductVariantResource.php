@@ -15,9 +15,10 @@ class ProductVariantResource extends JsonResource
             'price' => (float)$this->price,
             'discount_price' => $this->discount_price ? (float)$this->discount_price : null,
             'quantity' => (int)$this->quantity,
-            'in_stock' => (bool)$this->is_in_stock,
+            'in_stock' => (int)$this->is_in_stock ? 1 : 0,
             'thumbnail' => $this->thumbnail_url,
             'gallery' => $this->gallery_urls,
+            'status' => (int)$this->status ? 1 : 0,
             'created_at' => $this->created_at->toDateTimeString(),
         ];
     }
