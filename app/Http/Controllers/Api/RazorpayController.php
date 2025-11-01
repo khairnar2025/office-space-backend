@@ -97,13 +97,14 @@ namespace App\Http\Controllers\Api;
 
 use Razorpay\Api\Api;
 use Illuminate\Http\Request;
-use App\Models\{Order, OrderItem, Cart, DeliveryPincode, User};
+use App\Models\{Order, OrderItem, Cart, DeliveryPincode, ShippingSetting, User};
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SystemNotificationMail;
 use Illuminate\Support\Facades\DB;
 use PDF;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+
 class RazorpayController extends BaseController
 {
     private function getSessionId(Request $request)
@@ -119,6 +120,55 @@ class RazorpayController extends BaseController
     /**
      * Create Razorpay Order
      */
+    // public function createOrder(Request $request)
+    // {
+    //     $request->validate([
+    //         'amount'   => 'required|numeric|min:1',
+    //         'currency' => 'required|string',
+    //         'pincode'  => 'required|string|max:10',
+    //     ]);
+
+    //     $user = Auth::guard('sanctum')->user();
+    //     $sessionId = $this->getSessionId($request);
+
+    //     // Get the cart
+    //     $cart = $user
+    //         ? Cart::where('user_id', $user->id)->with('items.product')->first()
+    //         : Cart::where('session_id', $sessionId)->with('items.product')->first();
+
+    //     if (!$cart || $cart->items->isEmpty()) {
+    //         return $this->sendError('Cart is empty.', 400);
+    //     }
+
+    //     // Calculate subtotal
+    //     $subtotal = $cart->items->sum(fn($item) => $item->product->final_price * $item->quantity);
+
+    //     // Get shipping
+    //     $delivery = DeliveryPincode::serviceable()->where('pincode', $request->pincode)->first();
+    //     if (!$delivery) return $this->sendError('This pincode is not serviceable.', 400);
+
+    //     $totalAmount = $subtotal + $delivery->shipping_cost;
+
+    //     // Create Razorpay order
+    //     $api = new \Razorpay\Api\Api(config('services.razorpay.key'), config('services.razorpay.secret'));
+    //     $order = $api->order->create([
+    //         'amount' => $totalAmount * 100, // amount in paise
+    //         'currency' => $request->currency,
+    //         'receipt' => 'rcpt_' . time(),
+    //         'notes' => [
+    //             'shipping_cost' => $delivery->shipping_cost,
+    //             'pincode' => $request->pincode
+    //         ]
+    //     ]);
+
+    //     return $this->sendResponse([
+    //         'order' => $order->toArray(),
+    //         'subtotal' => $subtotal,
+    //         'shipping_cost' => $delivery->shipping_cost,
+    //         'total' => $totalAmount
+    //     ], 'Order created successfully');
+    // }
+
     public function createOrder(Request $request)
     {
         $request->validate([
@@ -142,11 +192,18 @@ class RazorpayController extends BaseController
         // Calculate subtotal
         $subtotal = $cart->items->sum(fn($item) => $item->product->final_price * $item->quantity);
 
-        // Get shipping
-        $delivery = DeliveryPincode::serviceable()->where('pincode', $request->pincode)->first();
-        if (!$delivery) return $this->sendError('This pincode is not serviceable.', 400);
+        // Get shipping settings
+        $shippingSetting = ShippingSetting::first();
+        if (!$shippingSetting) {
+            return $this->sendError('Shipping settings are not configured.', 500);
+        }
 
-        $totalAmount = $subtotal + $delivery->shipping_cost;
+        // Apply shipping cost only if subtotal < minimum_free_shipping_amount
+        $shippingCost = $subtotal < $shippingSetting->minimum_free_shipping_amount
+            ? $shippingSetting->shipping_cost
+            : 0;
+
+        $totalAmount = $subtotal + $shippingCost;
 
         // Create Razorpay order
         $api = new \Razorpay\Api\Api(config('services.razorpay.key'), config('services.razorpay.secret'));
@@ -155,7 +212,7 @@ class RazorpayController extends BaseController
             'currency' => $request->currency,
             'receipt' => 'rcpt_' . time(),
             'notes' => [
-                'shipping_cost' => $delivery->shipping_cost,
+                'shipping_cost' => $shippingCost,
                 'pincode' => $request->pincode
             ]
         ]);
@@ -163,11 +220,10 @@ class RazorpayController extends BaseController
         return $this->sendResponse([
             'order' => $order->toArray(),
             'subtotal' => $subtotal,
-            'shipping_cost' => $delivery->shipping_cost,
+            'shipping_cost' => $shippingCost,
             'total' => $totalAmount
         ], 'Order created successfully');
     }
-
 
     /**
      * Verify Razorpay Payment
