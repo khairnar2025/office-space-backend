@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Notifications\CustomResetPassword;
+
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -20,7 +21,10 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'company_name',
+        'gst_no',
         'email',
+        'phone_no',
         'profile_image',
         'role',
         'password',

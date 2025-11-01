@@ -234,13 +234,17 @@ class AuthController extends BaseController
             if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
                 Storage::disk('public')->delete($user->profile_image);
             }
-
             $user->profile_image = $request->file('profile_image')->store('users/profile', 'public');
         }
 
         if ($request->filled('name')) $user->name = $request->name;
         if ($request->filled('email')) $user->email = $request->email;
         if ($request->filled('password')) $user->password = Hash::make($request->password);
+
+        // New fields
+        if ($request->filled('company_name')) $user->company_name = $request->company_name;
+        if ($request->filled('gst_no')) $user->gst_no = $request->gst_no;
+        if ($request->filled('phone_no')) $user->phone_no = $request->phone_no;
 
         $user->save();
 
