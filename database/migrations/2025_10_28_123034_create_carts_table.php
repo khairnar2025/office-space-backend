@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('session_id')->nullable()->index();
-            $table->decimal('shipping_charge', 10, 2)->default(0);
+            //$table->decimal('shipping_charge', 10, 2)->default(0);
+            $table->string('coupon_code')->nullable()->index();
+            $table->decimal('coupon_discount', 10, 2)->default(0);
             $table->timestamps();
         });
     }

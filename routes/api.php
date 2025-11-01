@@ -36,6 +36,8 @@ Route::delete('cart/clear', [CartController::class, 'clear'])->name('cart.clear'
 // Forgot & Reset Password (API)
 Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
 Route::post('reset-password', [ResetPasswordController::class, 'resetPassword']);
+Route::post('apply-coupon', [CartController::class, 'applyCoupon']);
+
 Route::controller(CartController::class)->group(function () {
     Route::get('cart', 'index');
     Route::post('cart', 'store');

@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('coupons', function (Blueprint $table) {
             $table->id();
-            $table->string('coupon_code', 8)->unique();
+            $table->string('coupon_code', 8)->nullable()->unique();
             $table->date('start_date');
             $table->date('end_date');
             $table->enum('discount_type', ['fixed', 'percentage'])->default('fixed');
-            $table->decimal('discount_percentage', 10, 2);
+            $table->decimal('discount_percentage', 10, 2)->default(0);
             $table->text('description')->nullable();
             $table->boolean('status')->default(1);
             $table->boolean('specialise')->default(0);

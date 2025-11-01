@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\BaseController;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Coupon;
 use App\Models\DeliveryPincode;
 use App\Models\Product;
 use App\Models\ShippingSetting;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -47,7 +49,58 @@ class CartController extends BaseController
 
         return [$cart, $sessionId];
     }
+    /**
+     * Apply a coupon to the cart
+     */
+    public function applyCoupon(Request $request)
+    {
+        $request->validate([
+            'coupon_code' => 'required|string|exists:coupons,coupon_code',
+        ]);
 
+        $user = Auth::guard('sanctum')->user();
+        $sessionId = $this->getSessionId($request);
+
+        $cart = $user
+            ? Cart::with('items.product')->where('user_id', $user->id)->first()
+            : Cart::with('items.product')->where('session_id', $sessionId)->first();
+
+        if (!$cart || $cart->items->isEmpty()) {
+            return $this->sendError('Cart is empty.', 400);
+        }
+
+        $coupon = Coupon::where('coupon_code', $request->coupon_code)
+            ->where('status', 1)
+            ->whereDate('start_date', '<=', Carbon::today())
+            ->whereDate('end_date', '>=', Carbon::today())
+            ->first();
+
+        if (!$coupon) {
+            return $this->sendError('Coupon not valid or expired.', 400);
+        }
+
+        // Calculate subtotal
+        $subtotal = $cart->items->sum(fn($item) => $item->price * $item->quantity);
+
+        // Calculate discount
+        $discount = $coupon->discount_type === 'fixed'
+            ? $coupon->discount_percentage
+            : ($subtotal * $coupon->discount_percentage / 100);
+
+        // Save coupon in cart (optional: add column cart.coupon_code)
+        $cart->update([
+            'coupon_code' => $coupon->coupon_code,
+            'coupon_discount' => $discount,
+        ]);
+
+        return $this->sendResponse([
+            'cart_id' => $cart->id,
+            'coupon_code' => $coupon->coupon_code,
+            'discount' => $discount,
+            'subtotal' => $subtotal,
+            'total' => max(0, $subtotal - $discount),
+        ], 'Coupon applied successfully.');
+    }
 
     /**
      * Add item to cart
@@ -156,22 +209,20 @@ class CartController extends BaseController
     }
 
 
+
     // public function index(Request $request)
     // {
     //     $user = Auth::guard('sanctum')->user();
     //     $sessionId = $this->getSessionId($request);
 
-    //     if ($user) {
-    //         $cart = Cart::where('user_id', $user->id)
-    //             ->with('items.product', 'items.color')
-    //             ->first();
-    //     } else {
-    //         $cart = Cart::where('session_id', $sessionId)
-    //             ->with('items.product', 'items.color')
-    //             ->first();
-    //     }
+    //     $cart = $user
+    //         ? Cart::where('user_id', $user->id)
+    //         ->with('items.product:id,title', 'items.variant.color')
+    //         ->first()
+    //         : Cart::where('session_id', $sessionId)
+    //         ->with('items.product:id,title', 'items.variant.color')
+    //         ->first();
 
-    //     // If no cart exists, return early
     //     if (!$cart) {
     //         return response()->json([
     //             'success' => true,
@@ -183,30 +234,45 @@ class CartController extends BaseController
     //         ])->header('X-Session-Id', $sessionId);
     //     }
 
-    //     // --- Add subtotal and shipping calculation ---
-    //     $subtotal = $cart->items->sum(fn($item) => $item->product->final_price * $item->quantity);
-    //     $shippingCost = 0;
-    //     $pincode = $request->pincode;
-    //     if ($pincode) {
-    //         $delivery = DeliveryPincode::serviceable()->where('pincode', $pincode)->first();
+    //     // --- Calculate totals ---
+    //     $subtotal = $cart->items->sum(fn($item) => $item->price * $item->quantity);
 
-    //         if ($delivery) {
-    //             $shippingCost = $delivery->shipping_cost;
-    //         }
-    //     }
+    //     $shippingSetting = ShippingSetting::first();
+    //     $shippingCharge = ($subtotal < $shippingSetting->minimum_free_shipping_amount)
+    //         ? $shippingSetting->shipping_cost
+    //         : 0;
 
-    //     $total = $subtotal + $shippingCost;
+    //     $total = $subtotal + $shippingCharge;
 
-    //     // --- Send response with the extra fields ---
+    //     // --- Format the response cleanly ---
+    //     $cartData = [
+    //         'id' => $cart->id,
+    //         'items' => $cart->items->map(fn($item) => [
+    //             'id' => $item->id,
+    //             'quantity' => $item->quantity,
+    //             'price' => $item->price,
+    //             'total' => $item->price * $item->quantity,
+    //             'product' => [
+    //                 'id' => $item->product->id,
+    //                 'title' => $item->product->title,
+    //             ],
+    //             'variant' => [
+    //                 'id' => $item->variant?->id,
+    //                 'price' => $item->variant?->price,
+    //                 'discount_price' => $item->variant?->discount_price,
+    //                 'color_id' => $item->variant?->color_id,
+    //                 'color_name' => $item->variant?->color_name,
+    //                 'thumbnail_url' => $item->variant?->thumbnail_url,
+    //             ],
+    //         ]),
+    //         'subtotal' => $subtotal,
+    //         'shipping_charge' => $shippingCharge,
+    //         'total' => $total,
+    //     ];
+
     //     return response()
     //         ->json($this->sendResponse(
-    //             [
-    //                 'cart' => $cart,
-    //                 'subtotal' => $subtotal,
-    //                 'shipping_charge' => $shippingCost,
-    //                 'total' => $total,
-    //                 'session_id' => $sessionId,
-    //             ],
+    //             ['cart' => $cartData, 'session_id' => $sessionId],
     //             'Cart retrieved successfully.'
     //         ))
     //         ->header('X-Session-Id', $sessionId);
@@ -229,23 +295,46 @@ class CartController extends BaseController
                 'success' => true,
                 'data' => [
                     'cart' => null,
+                    'special_coupon' => null,
                     'session_id' => $sessionId,
                 ],
                 'message' => 'No cart found for this session.',
             ])->header('X-Session-Id', $sessionId);
         }
 
-        // --- Calculate totals ---
+        // --- Calculate subtotal ---
         $subtotal = $cart->items->sum(fn($item) => $item->price * $item->quantity);
 
+        // --- Apply specialized coupon if exists ---
+        $specialCoupon = Coupon::where('specialise', 1)
+            ->active()
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->first();
+
+        $discount = 0;
+        if ($specialCoupon) {
+            $discount = $specialCoupon->discount_type === 'fixed'
+                ? $specialCoupon->discount_percentage
+                : ($subtotal * $specialCoupon->discount_percentage / 100);
+
+            // Optionally attach coupon info to cart in DB
+            $cart->update([
+                'coupon_code' => $specialCoupon->coupon_code,
+                'coupon_discount' => $discount,
+            ]);
+        }
+
+        // --- Calculate shipping ---
         $shippingSetting = ShippingSetting::first();
         $shippingCharge = ($subtotal < $shippingSetting->minimum_free_shipping_amount)
             ? $shippingSetting->shipping_cost
             : 0;
 
-        $total = $subtotal + $shippingCharge;
+        // --- Final total ---
+        $total = max(0, $subtotal - $discount) + $shippingCharge;
 
-        // --- Format the response cleanly ---
+        // --- Format cart items ---
         $cartData = [
             'id' => $cart->id,
             'items' => $cart->items->map(fn($item) => [
@@ -267,13 +356,23 @@ class CartController extends BaseController
                 ],
             ]),
             'subtotal' => $subtotal,
+            'discount' => $discount,
             'shipping_charge' => $shippingCharge,
             'total' => $total,
         ];
 
         return response()
             ->json($this->sendResponse(
-                ['cart' => $cartData, 'session_id' => $sessionId],
+                [
+                    'cart' => $cartData,
+                    'special_coupon' => $specialCoupon ? [
+                        'coupon_code' => $specialCoupon->coupon_code,
+                        'discount_type' => $specialCoupon->discount_type,
+                        'discount_value' => $specialCoupon->discount_percentage,
+                        'description' => $specialCoupon->description,
+                    ] : null,
+                    'session_id' => $sessionId,
+                ],
                 'Cart retrieved successfully.'
             ))
             ->header('X-Session-Id', $sessionId);

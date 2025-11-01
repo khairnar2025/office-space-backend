@@ -97,13 +97,14 @@ namespace App\Http\Controllers\Api;
 
 use Razorpay\Api\Api;
 use Illuminate\Http\Request;
-use App\Models\{Order, OrderItem, Cart, DeliveryPincode, ShippingSetting, User};
+use App\Models\{Order, OrderItem, Cart, DeliveryPincode, ShippingSetting, User, Coupon};
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SystemNotificationMail;
 use Illuminate\Support\Facades\DB;
 use PDF;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class RazorpayController extends BaseController
 {
@@ -169,8 +170,10 @@ class RazorpayController extends BaseController
     //     ], 'Order created successfully');
     // }
 
+    // ---------------- CREATE ORDER ----------------
     public function createOrder(Request $request)
     {
+        // Step 1: Validate input
         $request->validate([
             'amount'   => 'required|numeric|min:1',
             'currency' => 'required|string',
@@ -180,50 +183,126 @@ class RazorpayController extends BaseController
         $user = Auth::guard('sanctum')->user();
         $sessionId = $this->getSessionId($request);
 
-        // Get the cart
+        // Step 2: Fetch cart
         $cart = $user
             ? Cart::where('user_id', $user->id)->with('items.product')->first()
             : Cart::where('session_id', $sessionId)->with('items.product')->first();
 
         if (!$cart || $cart->items->isEmpty()) {
+            \Log::warning('Cart empty', ['user_id' => $user->id ?? null, 'session_id' => $sessionId]);
             return $this->sendError('Cart is empty.', 400);
         }
 
-        // Calculate subtotal
+        // Step 3: Calculate subtotal
         $subtotal = $cart->items->sum(fn($item) => $item->product->final_price * $item->quantity);
+        if ($subtotal <= 0) {
+            \Log::warning('Cart subtotal is zero', ['cart_id' => $cart->id, 'subtotal' => $subtotal]);
+            return $this->sendError('Cart subtotal is zero. Please add valid products.', 400);
+        }
 
-        // Get shipping settings
+        // Step 4: Apply coupon discount
+        $discount = 0;
+        if ($cart->coupon_code) {
+            $coupon = Coupon::where('coupon_code', $cart->coupon_code)
+                ->where('status', 1)
+                ->first();
+
+            if ($coupon) {
+                $discount = $coupon->discount_type === 'fixed'
+                    ? $coupon->discount_percentage
+                    : ($subtotal * $coupon->discount_percentage / 100);
+            }
+        }
+
+        $subtotalAfterDiscount = max(0, $subtotal - $discount);
+
+        // Step 5: Fetch shipping settings
         $shippingSetting = ShippingSetting::first();
         if (!$shippingSetting) {
+            \Log::error('Shipping settings not configured');
             return $this->sendError('Shipping settings are not configured.', 500);
         }
 
-        // Apply shipping cost only if subtotal < minimum_free_shipping_amount
-        $shippingCost = $subtotal < $shippingSetting->minimum_free_shipping_amount
+        // Step 6: Calculate shipping cost
+        $shippingCost = $subtotalAfterDiscount < $shippingSetting->minimum_free_shipping_amount
             ? $shippingSetting->shipping_cost
             : 0;
 
-        $totalAmount = $subtotal + $shippingCost;
+        $totalAmount = $subtotalAfterDiscount + $shippingCost;
 
-        // Create Razorpay order
-        $api = new \Razorpay\Api\Api(config('services.razorpay.key'), config('services.razorpay.secret'));
-        $order = $api->order->create([
-            'amount' => $totalAmount * 100, // amount in paise
-            'currency' => $request->currency,
-            'receipt' => 'rcpt_' . time(),
-            'notes' => [
+        // Step 7: Check for zero or invalid total amount
+        if ($totalAmount <= 0) {
+            \Log::warning('Attempt to create order with zero total', [
+                'user_id' => $user->id ?? null,
+                'cart_id' => $cart->id,
+                'subtotal' => $subtotal,
+                'discount' => $discount,
                 'shipping_cost' => $shippingCost,
-                'pincode' => $request->pincode
-            ]
+                'total_amount' => $totalAmount
+            ]);
+
+            return $this->sendError('Cart total is zero. Please add valid products before checkout.', 400);
+        }
+
+        \Log::info('Cart debug info', [
+            'user_id' => $user->id ?? null,
+            'session_id' => $cart->session_id,
+            'cart_items_count' => $cart->items->count(),
+            'cart_subtotal' => $subtotal,
+            'coupon_code' => $cart->coupon_code ?? null,
+            'discount' => $discount,
+            'subtotal_after_discount' => $subtotalAfterDiscount,
+            'shipping_cost' => $shippingCost,
+            'total_amount' => $totalAmount
         ]);
 
+        // Step 8: Create Razorpay order with exception handling
+        try {
+            $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
+            $order = $api->order->create([
+                'amount' => $totalAmount * 100, // amount in paise
+                'currency' => $request->currency,
+                'receipt' => 'rcpt_' . time(),
+                'notes' => [
+                    'shipping_cost' => $shippingCost,
+                    'pincode' => $request->pincode,
+                    'coupon_code' => $cart->coupon_code ?? null,
+                    'coupon_discount' => $discount,
+                ]
+            ]);
+        } catch (\Razorpay\Api\Errors\BadRequestError $e) {
+            \Log::error('Razorpay BadRequestError', ['message' => $e->getMessage()]);
+            if (str_contains($e->getMessage(), 'Order amount less than minimum amount allowed')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your order amount is too low to process payment. Please add more items.',
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment processing failed. Please try again.',
+                'error' => $e->getMessage(),
+            ], 400);
+        } catch (\Exception $e) {
+            \Log::error('Razorpay general exception', ['message' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while creating payment order.',
+            ], 500);
+        }
+
+        // Step 9: Return success response
         return $this->sendResponse([
             'order' => $order->toArray(),
             'subtotal' => $subtotal,
+            'discount' => $discount,
             'shipping_cost' => $shippingCost,
             'total' => $totalAmount
         ], 'Order created successfully');
     }
+
+
 
     /**
      * Verify Razorpay Payment
@@ -309,6 +388,7 @@ class RazorpayController extends BaseController
     //         return $this->sendError($e->getMessage(), 500);
     //     }
     // }
+    // ---------------- VERIFY PAYMENT ----------------
     public function verifyPayment(Request $request)
     {
         $request->validate([
@@ -331,13 +411,12 @@ class RazorpayController extends BaseController
                 return $this->sendError('Invalid Signature', 400);
             }
 
-            // ✅ Fetch payment status
             $payment = $api->payment->fetch($request->razorpay_payment_id);
             if ($payment->status !== 'captured') {
                 return $this->sendError('Payment not captured', 400);
             }
 
-            $user = auth()->user();
+            $user = Auth::guard('sanctum')->user();
             $cart = $user
                 ? Cart::with('items.product', 'items.color')->where('user_id', $user->id)->first()
                 : Cart::with('items.product', 'items.color')->where('session_id', $request->header('X-Session-Id'))->first();
@@ -349,9 +428,26 @@ class RazorpayController extends BaseController
             DB::beginTransaction();
 
             $subtotal = $cart->items->sum(fn($i) => $i->product->final_price * $i->quantity);
-            $shippingCost = $request->shipping_cost ?? 0;
-            $grandTotal = $subtotal + $shippingCost;
 
+            // Coupon discount
+            $discount = 0;
+            if ($cart->coupon_code) {
+                $coupon = Coupon::where('coupon_code', $cart->coupon_code)
+                    ->where('status', 1)
+                    ->first();
+
+                if ($coupon) {
+                    $discount = $coupon->discount_type === 'fixed'
+                        ? $coupon->discount_percentage
+                        : ($subtotal * $coupon->discount_percentage / 100);
+                }
+            }
+
+            $subtotalAfterDiscount = max(0, $subtotal - $discount);
+            $shippingCost = $request->shipping_cost ?? 0;
+            $grandTotal = $subtotalAfterDiscount + $shippingCost;
+
+            // Create order
             $order = Order::create(array_merge($request->shipping, [
                 'order_number'        => 'ORD-' . strtoupper(uniqid()),
                 'user_id'             => $user->id ?? null,
@@ -360,6 +456,8 @@ class RazorpayController extends BaseController
                 'razorpay_payment_id' => $request->razorpay_payment_id,
                 'razorpay_signature'  => $request->razorpay_signature,
                 'subtotal'            => $subtotal,
+                'discount'            => $discount,
+                'coupon_code'         => $cart->coupon_code,
                 'shipping_cost'       => $shippingCost,
                 'total_amount'        => $grandTotal,
                 'currency'            => 'INR',
@@ -380,58 +478,54 @@ class RazorpayController extends BaseController
 
             DB::commit();
 
-            /**
-             * Generate PDF Invoice
-             */
-            $invoicePath = 'invoices/invoice_' . $order->id . '.pdf';
+            // Generate PDF invoice
+            // $invoicePath = 'invoices/invoice_' . $order->id . '.pdf';
+            // $pdf = PDF::loadView('pdf.invoice', compact('order'))->setPaper('a4');
+            // Storage::disk('public')->put($invoicePath, $pdf->output());
 
-            $pdf = PDF::loadView('pdf.invoice', compact('order'))->setPaper('a4');
-            Storage::disk('public')->put($invoicePath, $pdf->output());
+            // Queue emails
+            // try {
+            // $emailHtml = view('emails.order-confirm', compact('order'))->render();
+            // $adminUser = User::where('role', 'admin')->first();
 
-            /**
-             * Queue Emails (Customer + Admin)
-             */
-            try {
-                $emailHtml = view('emails.order-confirm', compact('order'))->render();
-                $adminUser = User::where('role', 'admin')->first();
+            // if ($order->email) {
+            //     Mail::to($order->email)->queue(
+            //         new SystemNotificationMail(
+            //             $order,
+            //             "Order Confirmation - #{$order->order_number}",
+            //             "Invoice Attached",
+            //             $emailHtml,
+            //             storage_path('app/public/' . $invoicePath),
+            //             'invoice_' . $order->id . '.pdf',
+            //             $order->name
+            //         )
+            //     );
+            // }
 
-                if ($order->email) {
-                    Mail::to($order->email)->queue(
-                        new SystemNotificationMail(
-                            $order,
-                            "Order Confirmation - #{$order->order_number}",
-                            "Invoice Attached",
-                            $emailHtml,
-                            storage_path('app/public/' . $invoicePath),
-                            'invoice_' . $order->id . '.pdf',
-                            $order->name
-                        )
-                    );
-                }
-
-                // Admin Email
-                if ($adminUser?->email) {
-                    Mail::to($adminUser->email)->queue(
-                        new SystemNotificationMail(
-                            $order,
-                            "New Order - #{$order->order_number}",
-                            "Invoice Attached",
-                            $emailHtml,
-                            storage_path('app/public/' . $invoicePath),
-                            'invoice_' . $order->id . '.pdf',
-                            'Admin'
-                        )
-                    );
-                }
-            } catch (\Exception $e) {
-                \Log::error("Order Email Failed: " . $e->getMessage());
-            }
+            // if ($adminUser?->email) {
+            //     Mail::to($adminUser->email)->queue(
+            //         new SystemNotificationMail(
+            //             $order,
+            //             "New Order - #{$order->order_number}",
+            //             "Invoice Attached",
+            //             $emailHtml,
+            //             storage_path('app/public/' . $invoicePath),
+            //             'invoice_' . $order->id . '.pdf',
+            //             'Admin'
+            //         )
+            //     );
+            // }
+            // } catch (\Exception $e) {
+            //     \Log::error("Order Email Failed: " . $e->getMessage());
+            // }
 
             return $this->sendResponse([
                 'order_id'      => $order->id,
                 'order_number'  => $order->order_number,
                 'total_amount'  => $grandTotal,
                 'shipping_cost' => $shippingCost,
+                'discount'      => $discount,
+                'coupon_code'   => $cart->coupon_code,
             ], 'Payment Verified & Order Placed Successfully!');
         } catch (\Exception $e) {
             DB::rollBack();

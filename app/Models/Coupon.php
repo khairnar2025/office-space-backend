@@ -24,4 +24,8 @@ class Coupon extends Model
         'specialise' => 'boolean',
         'discount_percentage' => 'decimal:2',
     ];
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
+    }
 }
