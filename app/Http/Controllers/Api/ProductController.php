@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Api\StoreProductRequest;
 use App\Http\Requests\Api\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
+use App\Models\DeliveryPincode;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\JsonResponse;
 
 class ProductController extends BaseController
 {
@@ -249,5 +251,31 @@ class ProductController extends BaseController
         $product->delete();
 
         return $this->sendSimpleResponse($product->id, true, 'Product deleted successfully');
+    }
+    public function checkPincode(Product $product, string $pincode): JsonResponse
+    {
+        $pincodeRecord = DeliveryPincode::where('pincode', $pincode)->first();
+
+        if (!$pincodeRecord || !$pincodeRecord->is_serviceable) {
+            return response()->json([
+                'available' => 0,
+                'message' => 'Delivery is not available to this pincode. You can submit an enquiry via our enquiry form.'
+            ], 200);
+        }
+
+        if (
+            $product->deliveryPincodes()->exists() &&
+            !$product->deliveryPincodes()->where('pincode', $pincode)->exists()
+        ) {
+            return response()->json([
+                'available' => 0,
+                'message' => 'This product cannot be delivered to this pincode. You can submit an enquiry via our form.'
+            ], 200);
+        }
+
+        return response()->json([
+            'available' => 1,
+            'message' => 'Product can be delivered to this pincode.'
+        ], 200);
     }
 }

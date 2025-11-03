@@ -43,7 +43,15 @@ class CouponController extends BaseController
      */
     public function update(UpdateCouponRequest $request, Coupon $coupon)
     {
-        $coupon->update($request->validated());
+        $data = $request->validated();
+        if (isset($data['specialise']) && $data['specialise']) {
+            // Set all other coupons' specialise to 0
+            Coupon::where('id', '!=', $coupon->id)
+                ->where('specialise', 1)
+                ->update(['specialise' => 0]);
+        }
+
+        $coupon->update($data);
 
         return $this->sendResponse(new CouponResource($coupon), 'Coupon updated successfully.');
     }

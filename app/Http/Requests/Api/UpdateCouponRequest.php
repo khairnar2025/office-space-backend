@@ -14,11 +14,11 @@ class UpdateCouponRequest extends FormRequest
     public function rules()
     {
         return [
-            'coupon_code'         => 'required|string|max:8|unique:coupons,coupon_code,' . $this->coupon->id,
-            'start_date'          => 'required|date',
-            'end_date'            => 'required|date|after_or_equal:start_date',
-            'discount_type'       => 'required|in:fixed,percentage',
-            'discount_percentage' => 'required|numeric|min:0',
+            'coupon_code'         => 'nullable|string|max:8|unique:coupons,coupon_code,' . $this->route('coupon')->id,
+            'start_date'          => 'nullable|date',
+            'end_date'            => 'nullable|date|after_or_equal:start_date',
+            'discount_type'       => 'nullable|in:fixed,percentage',
+            'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'description'         => 'nullable|string',
             'status'              => 'boolean',
             'specialise'          => 'boolean',

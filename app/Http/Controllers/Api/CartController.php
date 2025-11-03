@@ -52,15 +52,20 @@ class CartController extends BaseController
     /**
      * Apply a coupon to the cart
      */
+    /**
+     * Apply or remove a coupon from the cart
+     */
     public function applyCoupon(Request $request)
     {
+        // Allow coupon_code to be nullable for "remove coupon" action
         $request->validate([
-            'coupon_code' => 'required|string|exists:coupons,coupon_code',
+            'coupon_code' => 'nullable|string|exists:coupons,coupon_code',
         ]);
 
         $user = Auth::guard('sanctum')->user();
         $sessionId = $this->getSessionId($request);
 
+        // Get cart for logged-in user or session
         $cart = $user
             ? Cart::with('items.product')->where('user_id', $user->id)->first()
             : Cart::with('items.product')->where('session_id', $sessionId)->first();
@@ -69,25 +74,41 @@ class CartController extends BaseController
             return $this->sendError('Cart is empty.', 400);
         }
 
+        $subtotal = $cart->items->sum(fn($item) => $item->price * $item->quantity);
+
+        // --- Remove coupon logic ---
+        if (empty($request->coupon_code)) {
+            $cart->update([
+                'coupon_code' => null,
+                'coupon_discount' => 0,
+            ]);
+
+            return $this->sendResponse([
+                'cart_id' => $cart->id,
+                'coupon_code' => null,
+                'discount' => 0,
+                'subtotal' => $subtotal,
+                'total' => $subtotal,
+            ], 'Coupon removed successfully.');
+        }
+
+        // --- Apply coupon logic ---
         $coupon = Coupon::where('coupon_code', $request->coupon_code)
             ->where('status', 1)
-            ->whereDate('start_date', '<=', Carbon::today())
-            ->whereDate('end_date', '>=', Carbon::today())
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
             ->first();
 
         if (!$coupon) {
             return $this->sendError('Coupon not valid or expired.', 400);
         }
 
-        // Calculate subtotal
-        $subtotal = $cart->items->sum(fn($item) => $item->price * $item->quantity);
-
         // Calculate discount
         $discount = $coupon->discount_type === 'fixed'
             ? $coupon->discount_percentage
             : ($subtotal * $coupon->discount_percentage / 100);
 
-        // Save coupon in cart (optional: add column cart.coupon_code)
+        // Update cart with coupon info
         $cart->update([
             'coupon_code' => $coupon->coupon_code,
             'coupon_discount' => $discount,
@@ -101,6 +122,7 @@ class CartController extends BaseController
             'total' => max(0, $subtotal - $discount),
         ], 'Coupon applied successfully.');
     }
+
 
     /**
      * Add item to cart
@@ -305,25 +327,9 @@ class CartController extends BaseController
         // --- Calculate subtotal ---
         $subtotal = $cart->items->sum(fn($item) => $item->price * $item->quantity);
 
-        // --- Apply specialized coupon if exists ---
-        $specialCoupon = Coupon::where('specialise', 1)
-            ->active()
-            ->whereDate('start_date', '<=', now())
-            ->whereDate('end_date', '>=', now())
-            ->first();
-
-        $discount = 0;
-        if ($specialCoupon) {
-            $discount = $specialCoupon->discount_type === 'fixed'
-                ? $specialCoupon->discount_percentage
-                : ($subtotal * $specialCoupon->discount_percentage / 100);
-
-            // Optionally attach coupon info to cart in DB
-            $cart->update([
-                'coupon_code' => $specialCoupon->coupon_code,
-                'coupon_discount' => $discount,
-            ]);
-        }
+        // --- Use coupon discount from cart if exists ---
+        $discount = $cart->coupon_discount ?? 0;
+        $appliedCouponCode = $cart->coupon_code ?? null;
 
         // --- Calculate shipping ---
         $shippingSetting = ShippingSetting::first();
@@ -331,8 +337,8 @@ class CartController extends BaseController
             ? $shippingSetting->shipping_cost
             : 0;
 
-        // --- Final total ---
-        $total = max(0, $subtotal - $discount) + $shippingCharge;
+        // --- Final total including discount ---
+        $total = max(0, $subtotal - $discount + $shippingCharge);
 
         // --- Format cart items ---
         $cartData = [
@@ -357,9 +363,17 @@ class CartController extends BaseController
             ]),
             'subtotal' => $subtotal,
             'discount' => $discount,
+            'coupon_code' => $appliedCouponCode, // added applied coupon
             'shipping_charge' => $shippingCharge,
             'total' => $total,
         ];
+
+        // --- Show active specialised coupon info ---
+        $specialCoupon = Coupon::where('specialise', 1)
+            ->active()
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->first();
 
         return response()
             ->json($this->sendResponse(
@@ -377,6 +391,8 @@ class CartController extends BaseController
             ))
             ->header('X-Session-Id', $sessionId);
     }
+
+
 
 
     /**
