@@ -12,37 +12,41 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
-            $table->id();
+            Schema::create('orders', function (Blueprint $table) {
+                $table->id();
 
-            $table->unsignedBigInteger('user_id')->nullable(); // guest possible
-            $table->string('session_id')->nullable(); // guest cart reference
+                // User and session info
+                $table->unsignedBigInteger('user_id')->nullable();
+                $table->string('session_id')->nullable();
 
-            $table->string('razorpay_order_id')->nullable();
-            $table->string('razorpay_payment_id')->nullable();
-            $table->string('razorpay_signature')->nullable();
-            $table->decimal('subtotal', 10, 2)->default(0);
-            $table->decimal('shipping_cost', 5, 2)->default(0);
-            $table->decimal('total_amount', 10, 2)->default(0);
-            $table->string('currency', 10)->default('INR');
+                // Razorpay info
+                $table->string('razorpay_order_id')->nullable();
+                $table->string('razorpay_payment_id')->nullable();
+                $table->string('razorpay_signature')->nullable();
 
-            // Shipping details from checkout form
-            $table->string('name');
-            $table->string('email')->nullable();
-            $table->string('phone');
-            $table->text('address');
-            $table->string('pincode')->nullable();
-            $table->string('city')->nullable();
-            $table->string('state')->nullable();
+                // Financial details
+                $table->string('order_number')->unique();
+                $table->decimal('subtotal', 10, 2)->default(0);
+                $table->decimal('discount', 10, 2)->default(0);
+                $table->string('coupon_code')->nullable();
+                $table->decimal('shipping_cost', 10, 2)->default(0);
+                $table->decimal('total_amount', 10, 2)->default(0);
+                $table->string('currency', 10)->default('INR');
 
-            $table->enum('status', [
-                'pending',
-                'paid',
-                'failed',
-                'cancelled'
-            ])->default('pending');
+                // Shipping details
+                $table->string('name');
+                $table->string('email')->nullable();
+                $table->string('phone');
+                $table->text('address');
+                $table->string('pincode')->nullable();
+                $table->string('city')->nullable();
+                $table->string('state')->nullable();
 
-
-            $table->timestamps();
+                // Status tracking
+                $table->enum('status', ['pending', 'paid', 'failed', 'cancelled'])->default('pending');
+                $table->text('failure_reason')->nullable();
+                $table->timestamps();
+            });
         });
     }
 

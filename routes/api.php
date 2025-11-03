@@ -85,4 +85,6 @@ Route::middleware(['auth:sanctum', 'check.status'])->group(function () {
     });
     Route::post('razorpay/create-order', [RazorpayController::class, 'createOrder']);
     Route::post('razorpay/verify-payment', [RazorpayController::class, 'verifyPayment']);
+    Route::post('/orders/{orderId}/retry', [RazorpayController::class, 'retryFailedOrder']);
+    Route::post('/test-failed-order', [RazorpayController::class, 'createFailedOrder']);
 });
