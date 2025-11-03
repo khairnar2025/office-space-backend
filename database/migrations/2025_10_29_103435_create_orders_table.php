@@ -12,41 +12,40 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
-            Schema::create('orders', function (Blueprint $table) {
-                $table->id();
+            $table->id();
 
-                // User and session info
-                $table->unsignedBigInteger('user_id')->nullable();
-                $table->string('session_id')->nullable();
+            // User and session info
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('session_id')->nullable();
 
-                // Razorpay info
-                $table->string('razorpay_order_id')->nullable();
-                $table->string('razorpay_payment_id')->nullable();
-                $table->string('razorpay_signature')->nullable();
+            // Razorpay info
+            $table->string('razorpay_order_id')->nullable();
+            $table->string('razorpay_payment_id')->nullable();
+            $table->string('razorpay_signature')->nullable();
 
-                // Financial details
-                $table->string('order_number')->unique();
-                $table->decimal('subtotal', 10, 2)->default(0);
-                $table->decimal('discount', 10, 2)->default(0);
-                $table->string('coupon_code')->nullable();
-                $table->decimal('shipping_cost', 10, 2)->default(0);
-                $table->decimal('total_amount', 10, 2)->default(0);
-                $table->string('currency', 10)->default('INR');
+            // Financial details
+            $table->string('order_number')->unique();
+            $table->decimal('subtotal', 10, 2)->default(0);
+            $table->decimal('discount', 10, 2)->default(0);
+            $table->string('coupon_code')->nullable();
+            $table->decimal('shipping_cost', 10, 2)->default(0);
+            $table->decimal('total_amount', 10, 2)->default(0);
+            $table->string('currency', 10)->default('INR');
 
-                // Shipping details
-                $table->string('name');
-                $table->string('email')->nullable();
-                $table->string('phone');
-                $table->text('address');
-                $table->string('pincode')->nullable();
-                $table->string('city')->nullable();
-                $table->string('state')->nullable();
+            // Shipping details
+            $table->string('name');
+            $table->string('email')->nullable();
+            $table->string('phone');
+            $table->text('address');
+            $table->string('pincode')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
 
-                // Status tracking
-                $table->enum('status', ['pending', 'paid', 'failed', 'cancelled'])->default('pending');
-                $table->text('failure_reason')->nullable();
-                $table->timestamps();
-            });
+            // Status tracking
+            $table->enum('status', ['pending', 'paid', 'failed', 'cancelled'])->default('pending');
+            $table->text('failure_reason')->nullable();
+
+            $table->timestamps();
         });
     }
 
