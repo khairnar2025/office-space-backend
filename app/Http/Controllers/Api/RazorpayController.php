@@ -183,18 +183,34 @@ class RazorpayController extends BaseController
         $user = Auth::guard('sanctum')->user();
         $sessionId = $this->getSessionId($request);
 
-        // Step 2: Fetch cart
+        // Step 2: Fetch cart with variant + product
         $cart = $user
-            ? Cart::where('user_id', $user->id)->with('items.product')->first()
-            : Cart::where('session_id', $sessionId)->with('items.product')->first();
+            ? Cart::where('user_id', $user->id)
+            ->with(['items.variant', 'items.product'])
+            ->first()
+            : Cart::where('session_id', $sessionId)
+            ->with(['items.variant', 'items.product'])
+            ->first();
 
         if (!$cart || $cart->items->isEmpty()) {
             \Log::warning('Cart empty', ['user_id' => $user->id ?? null, 'session_id' => $sessionId]);
             return $this->sendError('Cart is empty.', 400);
         }
 
-        // Step 3: Calculate subtotal
-        $subtotal = $cart->items->sum(fn($item) => $item->product->final_price * $item->quantity);
+        // Step 3: Calculate subtotal using product variants
+        $subtotal = $cart->items->sum(function ($item) {
+            $variant = $item->variant;
+
+            if (!$variant) {
+                \Log::warning('Cart item missing variant', ['cart_item_id' => $item->id]);
+                return 0;
+            }
+
+            // Use discount price if available, otherwise base price
+            $price = $variant->discount_price ?? $variant->price;
+            return $price * $item->quantity;
+        });
+
         if ($subtotal <= 0) {
             \Log::warning('Cart subtotal is zero', ['cart_id' => $cart->id, 'subtotal' => $subtotal]);
             return $this->sendError('Cart subtotal is zero. Please add valid products.', 400);
@@ -230,7 +246,7 @@ class RazorpayController extends BaseController
 
         $totalAmount = $subtotalAfterDiscount + $shippingCost;
 
-        // Step 7: Check for zero or invalid total amount
+        // Step 7: Validate total amount
         if ($totalAmount <= 0) {
             \Log::warning('Attempt to create order with zero total', [
                 'user_id' => $user->id ?? null,
@@ -256,7 +272,7 @@ class RazorpayController extends BaseController
             'total_amount' => $totalAmount
         ]);
 
-        // Step 8: Create Razorpay order with exception handling
+        // Step 8: Create Razorpay order
         try {
             $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
             $order = $api->order->create([
@@ -301,6 +317,7 @@ class RazorpayController extends BaseController
             'total' => $totalAmount
         ], 'Order created successfully');
     }
+
 
 
 
@@ -401,6 +418,8 @@ class RazorpayController extends BaseController
 
         try {
             $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
+
+            // Step 1: Verify Razorpay signature
             try {
                 $api->utility->verifyPaymentSignature([
                     'razorpay_order_id'   => $request->razorpay_order_id,
@@ -411,15 +430,17 @@ class RazorpayController extends BaseController
                 return $this->sendError('Invalid Signature', 400);
             }
 
+            // Step 2: Fetch payment info from Razorpay
             $payment = $api->payment->fetch($request->razorpay_payment_id);
             if ($payment->status !== 'captured') {
                 return $this->sendError('Payment not captured', 400);
             }
 
+            // Step 3: Fetch cart with product variant and product
             $user = Auth::guard('sanctum')->user();
             $cart = $user
-                ? Cart::with('items.product', 'items.color')->where('user_id', $user->id)->first()
-                : Cart::with('items.product', 'items.color')->where('session_id', $request->header('X-Session-Id'))->first();
+                ? Cart::with(['items.variant', 'items.product'])->where('user_id', $user->id)->first()
+                : Cart::with(['items.variant', 'items.product'])->where('session_id', $request->header('X-Session-Id'))->first();
 
             if (!$cart || $cart->items->isEmpty()) {
                 return $this->sendError('Cart empty or not found', 404);
@@ -427,9 +448,19 @@ class RazorpayController extends BaseController
 
             DB::beginTransaction();
 
-            $subtotal = $cart->items->sum(fn($i) => $i->product->final_price * $i->quantity);
+            // Step 4: Calculate subtotal based on variant pricing
+            $subtotal = $cart->items->sum(function ($item) {
+                $variant = $item->variant;
+                if (!$variant) {
+                    \Log::warning('Cart item missing variant', ['cart_item_id' => $item->id]);
+                    return 0;
+                }
 
-            // Coupon discount
+                $price = $variant->discount_price ?? $variant->price;
+                return $price * $item->quantity;
+            });
+
+            // Step 5: Apply coupon discount
             $discount = 0;
             if ($cart->coupon_code) {
                 $coupon = Coupon::where('coupon_code', $cart->coupon_code)
@@ -447,7 +478,7 @@ class RazorpayController extends BaseController
             $shippingCost = $request->shipping_cost ?? 0;
             $grandTotal = $subtotalAfterDiscount + $shippingCost;
 
-            // Create order
+            // Step 6: Create order
             $order = Order::create(array_merge($request->shipping, [
                 'order_number'        => 'ORD-' . strtoupper(uniqid()),
                 'user_id'             => $user->id ?? null,
@@ -464,60 +495,35 @@ class RazorpayController extends BaseController
                 'status'              => 'paid',
             ]));
 
+            // Step 7: Save each order item using variant pricing
             foreach ($cart->items as $item) {
+                $variant = $item->variant;
+                if (!$variant) {
+                    continue;
+                }
+
+                $price = $variant->discount_price ?? $variant->price;
+
                 OrderItem::create([
-                    'order_id'   => $order->id,
-                    'product_id' => $item->product_id,
-                    'color_id'   => $item->color_id,
-                    'quantity'   => $item->quantity,
-                    'price'      => $item->product->final_price,
+                    'order_id'    => $order->id,
+                    'product_id'  => $item->product_id,
+                    'variant_id'  => $variant->id,     // store variant reference
+                    'color_id'    => $variant->color_id ?? null,
+                    'quantity'    => $item->quantity,
+                    'price'       => $price,
                 ]);
+
+                // Step 8: Reduce stock quantity
+                $variant->decrement('quantity', $item->quantity);
+                if ($variant->quantity <= 0) {
+                    $variant->update(['in_stock' => false]);
+                }
             }
 
+            // Step 9: Clear cart
             $cart->items()->delete();
 
             DB::commit();
-
-            // Generate PDF invoice
-            // $invoicePath = 'invoices/invoice_' . $order->id . '.pdf';
-            // $pdf = PDF::loadView('pdf.invoice', compact('order'))->setPaper('a4');
-            // Storage::disk('public')->put($invoicePath, $pdf->output());
-
-            // Queue emails
-            // try {
-            // $emailHtml = view('emails.order-confirm', compact('order'))->render();
-            // $adminUser = User::where('role', 'admin')->first();
-
-            // if ($order->email) {
-            //     Mail::to($order->email)->queue(
-            //         new SystemNotificationMail(
-            //             $order,
-            //             "Order Confirmation - #{$order->order_number}",
-            //             "Invoice Attached",
-            //             $emailHtml,
-            //             storage_path('app/public/' . $invoicePath),
-            //             'invoice_' . $order->id . '.pdf',
-            //             $order->name
-            //         )
-            //     );
-            // }
-
-            // if ($adminUser?->email) {
-            //     Mail::to($adminUser->email)->queue(
-            //         new SystemNotificationMail(
-            //             $order,
-            //             "New Order - #{$order->order_number}",
-            //             "Invoice Attached",
-            //             $emailHtml,
-            //             storage_path('app/public/' . $invoicePath),
-            //             'invoice_' . $order->id . '.pdf',
-            //             'Admin'
-            //         )
-            //     );
-            // }
-            // } catch (\Exception $e) {
-            //     \Log::error("Order Email Failed: " . $e->getMessage());
-            // }
 
             return $this->sendResponse([
                 'order_id'      => $order->id,

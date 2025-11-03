@@ -340,6 +340,10 @@ class AuthController extends BaseController
         if ($request->filled('company_name')) $user->company_name = $request->company_name;
         if ($request->filled('gst_no')) $user->gst_no = $request->gst_no;
         if ($request->filled('phone_no')) $user->phone_no = $request->phone_no;
+        if ($request->filled('address')) {
+            $user->billing_address = json_encode(json_decode($request->address, true));
+        }
+
 
         $user->save();
 
