@@ -22,7 +22,6 @@ class OrderController extends BaseController
 
         $orders = Order::where('user_id', $user->id)
             ->with('items.product', 'items.color')
-            ->latest()
             ->get();
 
         return $this->sendResponse(
@@ -36,8 +35,7 @@ class OrderController extends BaseController
      */
     public function adminIndex(Request $request)
     {
-        $query = Order::with(['items.product', 'items.color', 'user'])
-            ->latest();
+        $query = Order::with(['items.product', 'items.color', 'user']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
