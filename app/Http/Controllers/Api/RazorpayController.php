@@ -255,7 +255,6 @@ class RazorpayController extends BaseController
             }
             // Step 6: Create order
             $order = Order::create(array_merge($request->shipping, [
-                'order_number'        => 'ORD-' . strtoupper(uniqid()),
                 'user_id'             => $user->id ?? null,
                 'session_id'          => $cart->session_id,
                 'razorpay_order_id'   => $request->razorpay_order_id,

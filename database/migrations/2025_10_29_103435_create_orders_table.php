@@ -24,7 +24,6 @@ return new class extends Migration
             $table->string('razorpay_signature')->nullable();
 
             // Financial details
-            $table->string('order_number')->unique();
             $table->decimal('subtotal', 10, 2)->default(0);
             $table->decimal('discount', 10, 2)->default(0);
             $table->string('coupon_code')->nullable();
@@ -35,7 +34,7 @@ return new class extends Migration
             // Shipping details
             $table->string('name');
             $table->string('email')->nullable();
-            $table->string('phone');
+            $table->string('phone')->nullable();
             $table->text('address');
             $table->string('pincode')->nullable();
             $table->string('city')->nullable();
