@@ -13,6 +13,8 @@ class Order extends Model
         'razorpay_payment_id',
         'razorpay_signature',
         'subtotal',
+        'discount',
+        'coupon_code',
         'shipping_cost',
         'total_amount',
         'currency',
@@ -34,6 +36,4 @@ class Order extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    
 }
